@@ -11,12 +11,24 @@ page goes straight to the print status page when a print is running. The
 `t5uid1` runtime that ran those files inside Klippy is ported to
 `dgus_lcd/engine.py`.
 
-## Screen protocol
+## Screen protocol and tools
 
-The screen is a DWIN DMT48270C043_06WT (T5L, DGUS II). Its serial protocol
-and system variables are documented in [docs/PROTOCOL.md](docs/PROTOCOL.md)
-and implemented in `dgus_lcd/dgus_protocol.py`. Run the tests with
-`~/dgus-env/bin/python -m unittest discover -s tests -t .`.
+The screen is a DWIN DMT48270C043_06WT (T5UID1, DGUS II). Its serial
+protocol and system variables are documented in
+[docs/PROTOCOL.md](docs/PROTOCOL.md) and implemented in
+`dgus_lcd/dgus_protocol.py`.
+
+`dgustool` ([docs/DGUSTOOL.md](docs/DGUSTOOL.md)) reads device info,
+controls the screen and uploads DWIN_SET files over the serial port, so no
+SD card is needed. Stop the service while you use it:
+
+```
+sudo systemctl stop dgus_lcd
+~/dgus-env/bin/python -m dgus_lcd.dgustool info
+sudo systemctl start dgus_lcd
+```
+
+Tests: `~/dgus-env/bin/python -m unittest discover -s tests -t .`
 
 ## Wiring
 

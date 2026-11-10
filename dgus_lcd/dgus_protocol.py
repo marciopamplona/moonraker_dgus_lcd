@@ -1,10 +1,12 @@
-# DWIN T5L DGUS II serial (UART2) protocol: frame codec, CRC, stream
-# parser and system-variable helpers.
+# DWIN DGUS II serial (UART2) protocol: frame codec, CRC, stream parser
+# and system-variable helpers.
 #
 # Pure byte-level code, no I/O. See docs/PROTOCOL.md for the full
-# description; the reference is "T5L_DGUSII Application Development
-# Guide V2.9", chapters 4 (Communication Protocol) and 5 (System Variable
-# Interface).
+# description. The Ender-6 screen (DMT48270C043_06WT) is a T5UID1 (T5 CPU);
+# its reference is "T5UID1 Application Guide" (docs/), chapters 2.3 (serial
+# protocol) and 3 (system variables). The frame format is shared with the
+# newer T5L ("T5L_DGUSII Application Development Guide V2.9"), but some
+# system variables differ; T5L-only ones are marked below.
 #
 # Frame:  5A A5 | LEN | CMD | DATA... | [CRC16 lo, hi]
 #   LEN counts CMD + DATA (+ 2 CRC bytes when CRC mode is on).
@@ -18,14 +20,14 @@ from dataclasses import dataclass
 HEADER = b"\x5a\xa5"
 ACK = b"\x4f\x4b"  # "OK", the reply to every write instruction
 
-# Instructions (chapter 4.2)
+# Instructions
 CMD_WRITE_REG = 0x80     # write OS register page    (debug use)
 CMD_READ_REG = 0x81      # read OS register page     (debug use)
 CMD_WRITE_VAR = 0x82     # write word variables
 CMD_READ_VAR = 0x83      # read word variables / touch upload
-CMD_WRITE_CURVE = 0x84   # append data to curve buffers
-CMD_WRITE_DVAR = 0x86    # write via double-word address (256 KB space)
-CMD_READ_DVAR = 0x87     # read via double-word address
+CMD_WRITE_CURVE = 0x84   # append data to curve buffers          (T5L)
+CMD_WRITE_DVAR = 0x86    # write via double-word address         (T5L)
+CMD_READ_DVAR = 0x87     # read via double-word address          (T5L)
 
 # The LEN byte limits CMD + DATA (+ CRC) to 255 bytes.
 MAX_LEN = 0xff
@@ -34,54 +36,68 @@ MAX_READ_WORDS_CRC = 0x7c    # 0x83 word count, CRC on (reply must fit)
 MAX_REG_READ_BYTES = 0xfb    # 0x81 byte count
 
 # ---------------------------------------------------------------------------
-# System variables (VP 0x0000-0x0FFF, chapter 5.1). Lengths are in words.
+# System variables (VP 0x0000-0x0FFF). Lengths are in words.
+# Common to T5UID1 and T5L unless marked.
 # ---------------------------------------------------------------------------
-VP_SYSTEM_RESET = 0x0004     # W 2   write 55AA 5AA5 -> CPU reset
-VP_OS_UPDATE = 0x0006        # W 2   DWIN OS / 8051 code update
-VP_NOR_FLASH_RW = 0x0008     # W 4   NOR flash <-> variable space copy
-VP_UART2_CONFIG = 0x000C     # W 2   baud rate + CRC mode, not persisted
+VP_DEVICE_ID = 0x0000        # R 4   unique CPU id                    (T5)
+VP_SYSTEM_RESET = 0x0004     # W 2   55AA 5AA5 CPU reset, 55AA 5A5A full reset
+VP_OS_UPDATE = 0x0006        # W 2   DWIN OS code update from SRAM
+VP_NOR_FLASH_RW = 0x0008     # W 4   NOR flash <-> SRAM copy
+VP_UART2_CONFIG = 0x000C     # W 2   baud + CRC at runtime            (T5L)
+VP_VERSION_EXT = 0x000E      # R 2   CTP, GUI, OS versions            (T5L)
 VP_VERSION = 0x000F          # R 1   hi = GUI version, lo = OS version
-VP_VERSION_EXT = 0x000E      # R 2   D2 = CTP driver, D1 = GUI, D0 = OS
 VP_RTC = 0x0010              # R/W 4 Y M D W h m s 0 (hex, not BCD)
 VP_PIC_NOW = 0x0014          # R 1   current page id
 VP_GUI_STATUS = 0x0015       # R 1   0 = idle, 1 = busy
 VP_TP_STATUS = 0x0016        # R/W 4 touch flag/state/x/y
+VP_VCC_NOW = 0x0030          # R 1   3.3 V rail, AD*4800/65532 mV      (T5)
 VP_LED_NOW = 0x0031          # R 1   5A + current brightness
-VP_AD_VALUES = 0x0032        # R 8   AD0..AD7
-VP_LCD_HOR = 0x007A          # R 1   horizontal resolution
-VP_LCD_VER = 0x007B          # R 1   vertical resolution
+VP_AD_VALUES = 0x0032        # R 4   AD0..AD3 (T5L: 8 channels)
+VP_AD_UPDATED = 0x0036       # R 1   5A = temperature/AD compute updated (T5)
+VP_CORE_TEMP = 0x0037        # R 1   T*240/929 = 0.1 degC             (T5)
+VP_AD_COMPUTE = 0x0038       # R 16  AD0-7 DC/RMS                     (T5)
+VP_IRDA = 0x0048             # R 4   IR remote data                   (T5)
+VP_LCD_HOR = 0x007A          # R 1   horizontal resolution            (T5L)
+VP_LCD_VER = 0x007B          # R 1   vertical resolution              (T5L)
+VP_FOLDER_NAME = 0x007C      # R 4   SD update folder, e.g. DWIN_SET   (T5)
 VP_SYSTEM_CONFIG = 0x0080    # R/W 2 runtime system config
 VP_LED_CONFIG = 0x0082       # R/W 2 on/standby brightness + timeout
-VP_PIC_SET = 0x0084          # R/W 2 page switch
-VP_PWM0_SET = 0x0086         # R/W 2
-VP_PWM1_SET = 0x0088         # R/W 2
-VP_PWM0_OUT = 0x0092         # R/W 1
-VP_PWM1_OUT = 0x0093         # R/W 1
+VP_PIC_SET = 0x0084          # R/W 2 page switch / save page
+VP_PWM1_SET = 0x0086         # R/W 4 T5: PWM1-3 at 0x86/0x8A/0x8E (T5L: PWM0 2w)
+VP_PWM2_SET = 0x008A         # R/W 4                                   (T5)
+VP_PWM3_SET = 0x008E         # R/W 4                                   (T5)
+VP_PWM1_OUT = 0x0092         # R/W 1 T5: PWM1-3 out 0x92-0x94 (T5L: PWM0, PWM1)
 VP_RTC_SET = 0x009C          # W 4   set hardware RTC
-VP_MUSIC_PLAY = 0x00A0       # R/W 4 buzzer / WAE playback
-VP_MUSIC_VOLUME = 0x00A1     #       (byte D5 of the 0xA0 block)
-VP_EXT_FLASH = 0x00AA        # R/W 6 16 MB SPI flash / font operations
+VP_MUSIC_PLAY = 0x00A0       # R/W 2 start, count|buzz time, volume, remaining
+VP_MUSIC_VOLUME = 0x00A1     #       hi byte = volume (1/256)
+VP_BMP_DOWNLOAD = 0x00A2     # W 4   SRAM -> picture buffer            (T5)
+VP_JPEG_DOWNLOAD = 0x00A6    # W 4   SRAM JPEG -> screen / picture slot (T5)
+VP_NAND_FLASH = 0x00AA       # R/W 6 font/icon/audio flash access
 VP_TOUCH_CONTROL = 0x00B0    # W     enable/disable/read/modify a touch control
 VP_TP_SIMULATE = 0x00D4      # W 4   simulate a touch
-VP_POINTER_ICON = 0x00D8     # W 4   pointer icon overlay
-VP_WAE_SWITCH = 0x00DC       # W 2
-VP_ICL_SWITCH = 0x00DE       # W 2   background ICL switch
-VP_MEMORY_CRC = 0x00E0       # R/W 2
-VP_DGUS_STOP = 0x00FC        # W 2   stop refresh / stop touch handling
-VP_UART1_DOWNLOAD = 0x00FE   # W 2
-VP_FSK_BUS = 0x0100          # R/W 512
+VP_POINTER_ICON = 0x00D8     # W 4   pointer icon overlay             (T5L)
+VP_WAE_SWITCH = 0x00DC       # W 2                                    (T5L)
+VP_ICL_SWITCH = 0x00DE       # W 2   background ICL switch            (T5L)
+VP_MEMORY_CRC = 0x00E0       # R/W 2                                  (T5L)
+VP_DGUS_STOP = 0x00FC        # W 2   stop refresh / touch handling    (T5L)
+VP_UART1_DOWNLOAD = 0x00FE   # W 2                                    (T5L)
+VP_FSK_BUS = 0x0100          # R/W 512                                (T5L)
 VP_CURVE_STATUS = 0x0300     # R 16  2 words per channel: pointer, length
 VP_CURVE_WRITE = 0x0310      # W     5AA5 + block count, blocks from 0x0312
-VP_NETWORK = 0x0400          # R/W 256
-VP_MULTIMEDIA = 0x0500       # R/W 192
-VP_EXT_MEMORY = 0x05C0       # R/W 64
-VP_VAR_CHANGED = 0x0F00      # R 2   5A + VP + word count of last upload
+VP_NETWORK = 0x0400          # R/W 256                                (T5L)
+VP_MULTIMEDIA = 0x0500       # R/W 192                                (T5L)
+VP_EXT_MEMORY = 0x05C0       # R/W 64                                 (T5L)
+VP_VAR_CHANGED = 0x0F00      # R 2   5A + VP + word count             (T5L)
 VP_USER_START = 0x1000       # first user variable address
+VP_EXT_FLASH = VP_NAND_FLASH  # T5L name for 0xAA
+VP_PWM0_SET = VP_PWM1_SET     # T5L name for 0x86
 
-# 0x0080 System_Config D0 bits
-CFG_CRC = 0x80               # read only
-CFG_LOAD_22 = 0x20           # read only
-CFG_AUTO_UPLOAD = 0x10
+# 0x0080 System_Config D0 bits (T5UID1 meaning; T5L differences noted)
+CFG_CRC = 0x80               # T5L only: CRC on (read only)
+CFG_128_CONTROLS = 0x40      # T5: 128 instead of 64 controls/page (ro)
+CFG_LOAD_22 = 0x20           # init SRAM from 22*.BIN (read only)
+CFG_SD_ENABLED = 0x10        # T5: SD card port on (T5L: auto upload)
+CFG_AUTO_UPLOAD = 0x10       # T5L name for bit 4
 CFG_TOUCH_SOUND = 0x08
 CFG_STANDBY_BACKLIGHT = 0x04
 CFG_ROTATION_MASK = 0x03     # 0, 90, 180, 270 degrees
@@ -92,8 +108,22 @@ TP_RELEASED, TP_PRESSED, TP_LIFTED, TP_PRESSING = 0, 1, 2, 3
 TOUCH_PRESS, TOUCH_RELEASE, TOUCH_HOLD, TOUCH_CLICK = 1, 2, 3, 4
 # 0x00B0 touch control access modes
 CTRL_DISABLE, CTRL_ENABLE, CTRL_READ, CTRL_WRITE = 0, 1, 2, 3
+# 0x0084 page modes
+PIC_SWITCH, PIC_SAVE = 0x01, 0x02
+# 0x00A6 JPEG modes
+JPEG_SHOW, JPEG_SAVE = 0x01, 0x02
 
-# CPU clock used in the 0x000C baud divisor
+# T5UID1 memory layout (T5UID1 guide ch. 1, 4)
+NAND_BLOCK = 0x8000          # 0xAA writes 32 KB blocks
+NAND_FONT_SIZE = 0x40000     # one font/file id = 256 KB
+NAND_BLOCKS = 0x800          # 64 MB font space
+NAND_AUDIO_OFFSET = 0x2000000  # audio shares the upper 32 MB of font space
+AUDIO_BLOCK = 0x20000        # one WAV id = 128 KB (2.048 s @ 32 kHz 16 bit)
+NOR_SIZE = 0x50000           # 160 Kwords
+NOR_LIB_SIZE = 0x1000        # one .LIB id = 2 Kwords
+PICTURE_BUFFER_WORDS = 0x25800  # 0xA2 picture buffer, 150 Kwords
+
+# CPU clock used in the T5L 0x000C baud divisor
 T5L_CPU_HZ = 206438400
 
 
@@ -343,42 +373,53 @@ class FrameParser:
         return frames
 
 
+
+
 # ---------------------------------------------------------------------------
 # System-variable helpers. Each returns (address, data) for write_var(),
-# so they work with both the codec above and DGUSSerial.write_var().
+# so they work with both the codec above and DGUSSerial.send().
 # ---------------------------------------------------------------------------
-def cmd_reset():
-    """Reboot the T5L (same as a power cycle)."""
-    return VP_SYSTEM_RESET, b"\x55\xaa\x5a\xa5"
+def cmd_reset(full=False):
+    """Reboot the screen CPU; full=True also pulses /RST_OUT (T5)."""
+    return VP_SYSTEM_RESET, b"\x55\xaa\x5a" + (b"\x5a" if full else b"\xa5")
 
 
-def cmd_page(page_id):
-    """Switch to page `page_id`."""
-    return VP_PIC_SET, struct.pack(">BBH", 0x5a, 0x01, page_id)
+def cmd_page(page_id, mode=PIC_SWITCH):
+    """Switch to page `page_id`; mode=PIC_SAVE stores the current screen
+    background as picture `page_id` instead (T5)."""
+    return VP_PIC_SET, struct.pack(">BBH", 0x5a, mode, page_id)
 
 
-def cmd_brightness(on, standby=None, timeout_ms=None):
+def cmd_brightness(on, standby=None, timeout_ms=None, tick_ms=5):
     """Backlight: `on` (0-100), optional standby level and timeout.
 
     Without standby/timeout only the first word is written, which sets the
-    brightness directly.
+    brightness directly. The timeout unit is 5 ms on T5UID1, 10 ms on T5L
+    (pass tick_ms=10).
     """
     on = _pct(on)
     if standby is None and timeout_ms is None:
         return VP_LED_CONFIG, bytes([on, on])
     standby = _pct(on if standby is None else standby)
-    ticks = max(0, min(0xffff, int((timeout_ms or 0) // 10)))
+    ticks = max(0, min(0xffff, int((timeout_ms or 0) // tick_ms)))
     return VP_LED_CONFIG, struct.pack(">BBH", on, standby, ticks)
 
 
 def cmd_beep(ms):
-    """Buzzer beep for `ms` milliseconds (8 ms resolution, max ~2 s)."""
+    """Buzzer beep for `ms` milliseconds (8 ms resolution, max ~2 s).
+
+    Only beeps when the screen is configured for buzzer mode; this one
+    uses its WAV player, so use cmd_play_music() instead.
+    """
     return VP_MUSIC_PLAY, bytes([0x00, max(1, min(0xff, ms // 8))])
 
 
-def cmd_play_music(segment, count=1, volume=0x40):
-    """Play WAE `segment` (volume 0-0x40 = 0-100%)."""
-    return VP_MUSIC_PLAY, bytes([segment & 0xff, count & 0xff,
+def cmd_play_music(start, count=1, volume=0xff):
+    """Play `count` 2-s audio sections starting at WAV id `start`.
+
+    Volume is 0-255 on T5UID1 (T5L WAE: 0-0x40). count=0 stops playback.
+    """
+    return VP_MUSIC_PLAY, bytes([start & 0xff, count & 0xff,
                                  volume & 0xff, 0])
 
 
@@ -413,22 +454,107 @@ def cmd_touch_control(page, control, ctype, mode):
                                          ctype, mode)
 
 
+def cmd_system_config(flags, t5l=False):
+    """Write 0x0080 System_Config D0 (CFG_* bits | rotation)."""
+    return VP_SYSTEM_CONFIG, bytes([0x5a if t5l else 0x00, 0x00, 0x00,
+                                    flags & 0x7f])
+
+
+def cmd_nor_flash(write, flash_addr, vp, words):
+    """Copy `words` words between NOR flash and SRAM.
+
+    write=True stores VP -> flash, False loads flash -> VP. `flash_addr`
+    is a word address. Addresses and length must be even. Poll 0x0008
+    until its first byte is 0 before the next operation.
+    """
+    if flash_addr % 2 or vp % 2 or words % 2:
+        raise ProtocolError("flash address, VP and length must be even")
+    return VP_NOR_FLASH_RW, (bytes([0xa5 if write else 0x5a])
+                             + flash_addr.to_bytes(3, "big")
+                             + struct.pack(">HH", vp, words))
+
+
+def cmd_nand_write(block, vp, delay=1):
+    """Write the 32 KB at SRAM `vp` into NAND block `block` (0-0x7FF).
+
+    Block n covers byte offset n*32K of the 64 MB font space. T5UID1 wants
+    delay=1 (fixed); on T5L it is the ms to pause DGUS after the write.
+    Poll 0x00AA until its first byte is 0.
+    """
+    if not 0 <= block < NAND_BLOCKS * 2 or vp % 2:
+        raise ProtocolError("invalid NAND block or odd VP")
+    return VP_NAND_FLASH, struct.pack(">BBHHH4x", 0x5a, 0x02, block, vp,
+                                      delay)
+
+
+def cmd_nand_read(font_id, word_offset, vp, words):
+    """Read `words` words of font `font_id` (0x40-0x7F, T5) into SRAM.
+
+    T5UID1 can only read back the 16 MB at font ids 0x40-0x7F.
+    """
+    if vp % 2 or words % 2:
+        raise ProtocolError("VP and length must be even")
+    return VP_NAND_FLASH, (bytes([0x5a, 0x01, font_id & 0xff])
+                           + word_offset.to_bytes(3, "big")
+                           + struct.pack(">HH2x", vp, words))
+
+
+def cmd_bmp_download(vp, words, buffer_word_addr):
+    """Copy `words` words of RGB565 pixels from SRAM to the picture buffer
+    (the screen's frame buffer) at `buffer_word_addr` (T5)."""
+    if vp % 2 or words % 2:
+        raise ProtocolError("VP and length must be even")
+    return VP_BMP_DOWNLOAD, (struct.pack(">BHH", 0x5a, vp, words)
+                             + buffer_word_addr.to_bytes(3, "big"))
+
+
+def cmd_jpeg_download(vp, mode=JPEG_SAVE, param=0):
+    """Decode the JPEG at SRAM `vp` (T5, max 64 KB).
+
+    mode=JPEG_SAVE stores it as picture id `param`; JPEG_SHOW draws it on
+    the current page with its top-left corner given by `param`.
+    """
+    if vp % 2:
+        raise ProtocolError("VP must be even")
+    return VP_JPEG_DOWNLOAD, struct.pack(">BBHH2x", 0x5a, mode, vp, param)
+
+
+def cmd_os_update(vp):
+    """Flash the DWIN OS code stored in SRAM at `vp` (code from 0x1000)."""
+    if vp % 2:
+        raise ProtocolError("VP must be even")
+    return VP_OS_UPDATE, struct.pack(">BBH", 0x5a, 0x10, vp)
+
+
+def cmd_pwm(channel, divider, precision):
+    """Configure T5 PWM `channel` (1-3): carrier = 501.35 MHz /
+    (divider * precision)."""
+    if not 1 <= channel <= 3:
+        raise ProtocolError("PWM channel must be 1..3")
+    return (VP_PWM1_SET + (channel - 1) * 4,
+            struct.pack(">BBH4x", 0x5a, divider, precision))
+
+
+def cmd_pwm_out(channel, width):
+    """Set T5 PWM `channel` (1-3) output high-level width."""
+    if not 1 <= channel <= 3:
+        raise ProtocolError("PWM channel must be 1..3")
+    return VP_PWM1_OUT + channel - 1, struct.pack(">H", width)
+
+
+# --- T5L only ---------------------------------------------------------------
 def cmd_touch_enable(enable):
-    """Enable or disable all touch processing."""
+    """Enable or disable all touch processing (T5L)."""
     return VP_DGUS_STOP, (b"\x00\x00\x00\x00" if enable
                           else b"\x55\xaa\x5a\x5a")
 
 
-def cmd_system_config(flags):
-    """Write 0x0080 System_Config D0 (CFG_AUTO_UPLOAD | ... | rotation)."""
-    return VP_SYSTEM_CONFIG, bytes([0x5a, 0x00, 0x00, flags & 0x7f])
-
-
 def cmd_uart2(baud=None, crc=False):
-    """Change UART2 baud rate and/or CRC mode (lost on power off).
+    """Change UART2 baud rate and/or CRC mode at runtime (T5L).
 
-    With baud=None only the CRC flag changes. The reply to this write
-    already uses the *old* settings; switch the host side right after.
+    Lost on power off. With baud=None only the CRC flag changes. The reply
+    to this write already uses the *old* settings; switch the host side
+    right after. T5UID1 has no such register: edit its CFG file instead.
     """
     mode = 0x80 if crc else 0x00
     if baud is None:
@@ -439,22 +565,8 @@ def cmd_uart2(baud=None, crc=False):
     return VP_UART2_CONFIG, struct.pack(">BBH", 0x5a, mode, div)
 
 
-def cmd_nor_flash(write, flash_addr, vp, words):
-    """Copy `words` words between NOR flash and variable space.
-
-    write=True stores VP -> flash, False loads flash -> VP. Addresses and
-    length must be even. Poll 0x0008 until its first byte is 0 before the
-    next operation.
-    """
-    if flash_addr % 2 or vp % 2 or words % 2:
-        raise ProtocolError("flash address, VP and length must be even")
-    return VP_NOR_FLASH_RW, (bytes([0xa5 if write else 0x5a])
-                             + flash_addr.to_bytes(3, "big")
-                             + struct.pack(">HH", vp, words))
-
-
 def cmd_pointer_icon(icl, icon, x, y, show=True):
-    """Overlay icon `icon` of ICL file `icl` at (x, y)."""
+    """Overlay icon `icon` of ICL file `icl` at (x, y) (T5L)."""
     return VP_POINTER_ICON, struct.pack(">BBHHH", 0x5a if show else 0,
                                         icl, icon, x, y)
 
@@ -484,15 +596,38 @@ def parse_rtc(data):
 
 
 def parse_system_config(data):
-    """0x0080 reply -> dict of the configuration fields."""
+    """0x0080 reply -> dict of the configuration fields (T5UID1 names)."""
     flags = data[3]
     return {
         "touch_sensitivity": data[1],
         "touch_mode": data[2],
-        "crc": bool(flags & CFG_CRC),
+        "controls_per_page": 128 if flags & CFG_128_CONTROLS else 64,
         "load_22": bool(flags & CFG_LOAD_22),
-        "auto_upload": bool(flags & CFG_AUTO_UPLOAD),
+        "sd_enabled": bool(flags & CFG_SD_ENABLED),
         "touch_sound": bool(flags & CFG_TOUCH_SOUND),
         "standby_backlight": bool(flags & CFG_STANDBY_BACKLIGHT),
         "rotation": (flags & CFG_ROTATION_MASK) * 90,
     }
+
+
+def parse_led_config(data, tick_ms=5):
+    """0x0082 reply -> (on, standby, timeout_ms)."""
+    on, standby, ticks = struct.unpack(">BBH", data[:4])
+    return on, standby, ticks * tick_ms
+
+
+def parse_vcc(data):
+    """0x0030 reply -> 3.3 V rail in volts (T5)."""
+    return struct.unpack(">H", data[:2])[0] * 4.8 / 65532
+
+
+def parse_core_temp(data):
+    """0x0037 reply -> CPU core temperature in degC (T5)."""
+    return struct.unpack(">H", data[:2])[0] * 240 / 929 / 10
+
+
+def parse_adc(data, mv=True):
+    """0x0032 reply -> list of AD values (mV when mv=True, T5 scaling)."""
+    n = len(data) // 2
+    vals = struct.unpack(">%dH" % n, data[:n * 2])
+    return [v * 4800 / 65532 for v in vals] if mv else list(vals)

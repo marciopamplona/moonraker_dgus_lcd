@@ -20,7 +20,8 @@ class CRCTest(unittest.TestCase):
                           ("82 1000 3132", "CC9B"),
                           ("82 4F4B", "A5EF"),
                           ("83 1001 01 005A", "0E2C"),
-                          ("83 000F 01 6322", "E5D5")]:
+                          ("83 000F 01 6322", "E5D5"),
+                          ("83 0010 04", "25A3")]:  # T5UID1 guide
             self.assertEqual(p.crc16(h(body)).to_bytes(2, "little"), h(crc))
 
 
@@ -77,14 +78,16 @@ class CommandTest(unittest.TestCase):
             (p.cmd_reset(), "5AA5 07 82 0004 55AA 5AA5"),
             (p.cmd_page(1), "5AA5 07 82 0084 5A01 0001"),
             (p.cmd_beep(1000), "5AA5 05 82 00A0 007D"),
-            (p.cmd_play_music(3), "5AA5 07 82 00A0 03 01 40 00"),
-            (p.cmd_brightness(0x64, 0x32, 10000), "5AA5 07 82 0082 6432 03E8"),
+            (p.cmd_play_music(3, volume=0x40), "5AA5 07 82 00A0 03 01 40 00"),
+            (p.cmd_brightness(0x64, 0x32, 10000, tick_ms=10),
+             "5AA5 07 82 0082 6432 03E8"),
+            (p.cmd_brightness(0x64, 0x32, 5000), "5AA5 07 82 0082 6432 03E8"),
             (p.cmd_touch(0xee, 0x8f), "5AA5 0B 82 00D4 5AA5 0004 00EE 008F"),
             (p.cmd_touch_control(0, 2, 1, p.CTRL_DISABLE),
              "5AA5 0B 82 00B0 5AA5 0000 02 01 0000"),
             (p.cmd_touch_enable(False), "5AA5 07 82 00FC 55AA 5A5A"),
             (p.cmd_touch_enable(True), "5AA5 07 82 00FC 0000 0000"),
-            (p.cmd_system_config(0x38), "5AA5 07 82 0080 5A 00 00 38"),
+            (p.cmd_system_config(0x38, t5l=True), "5AA5 07 82 0080 5A 00 00 38"),
             (p.cmd_uart2(9600), "5AA5 07 82 000C 5A00 0150"),
             (p.cmd_uart2(115200), "5AA5 07 82 000C 5A00 001C"),
             (p.cmd_uart2(crc=True), "5AA5 05 82 000C 5A80"),
@@ -155,7 +158,7 @@ class ParserTest(unittest.TestCase):
         self.assertEqual(p.parse_touch_status(h("5A02 0255 00E5 0000")),
                          (True, p.TP_LIFTED, 0x0255, 0x00e5))
         cfg = p.parse_system_config(h("00 14 10 38"))
-        self.assertTrue(cfg["auto_upload"] and cfg["touch_sound"])
+        self.assertTrue(cfg["sd_enabled"] and cfg["touch_sound"])
         self.assertEqual(cfg["rotation"], 0)
 
 

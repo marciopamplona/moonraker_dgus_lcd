@@ -32,24 +32,12 @@ if ! id -nG "${USER_NAME}" | grep -qw dialout; then
 fi
 
 echo "==> systemd service"
-sudo tee /etc/systemd/system/${SERVICE}.service >/dev/null <<EOF
-[Unit]
-Description=DGUS Reloaded touchscreen service (Moonraker)
-After=network-online.target moonraker.service
-Wants=moonraker.service
-
-[Service]
-Type=simple
-User=${USER_NAME}
-SupplementaryGroups=dialout
-WorkingDirectory=${SRCDIR}
-ExecStart=${VENV}/bin/python -m dgus_lcd -c ${PRINTER_DATA}/config/dgus_lcd.cfg -l ${PRINTER_DATA}/logs/dgus_lcd.log
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
+sed -e "s|@USER@|${USER_NAME}|g" \
+    -e "s|@SRCDIR@|${SRCDIR}|g" \
+    -e "s|@VENV@|${VENV}|g" \
+    -e "s|@PRINTER_DATA@|${PRINTER_DATA}|g" \
+    "${SRCDIR}/config/${SERVICE}.service" \
+    | sudo tee /etc/systemd/system/${SERVICE}.service >/dev/null
 sudo systemctl daemon-reload
 sudo systemctl enable ${SERVICE}
 sudo systemctl restart ${SERVICE}

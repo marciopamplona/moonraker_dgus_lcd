@@ -1,0 +1,19 @@
+# systemd unit template for the DGUS LCD service.
+# install.sh replaces the @...@ placeholders and installs the result as
+# /etc/systemd/system/dgus_lcd.service.
+[Unit]
+Description=DGUS Reloaded touchscreen service (Moonraker)
+After=network-online.target moonraker.service
+Wants=moonraker.service
+
+[Service]
+Type=simple
+User=@USER@
+SupplementaryGroups=dialout
+WorkingDirectory=@SRCDIR@
+ExecStart=@VENV@/bin/python -m dgus_lcd -c @PRINTER_DATA@/config/dgus_lcd.cfg -l @PRINTER_DATA@/logs/dgus_lcd.log
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
