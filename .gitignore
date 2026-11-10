@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Virtual environments (the service uses ~/dgus-env, outside this folder)
+venv/
+.venv/
+env/
+
+# Runtime output
+*.log
+state.json
+
+# Vendor manuals (55 MB, DWIN copyright). Download links are in
+# docs/PROTOCOL.md; keep only our own docs in git.
+docs/*.pdf
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store

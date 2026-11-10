@@ -1,0 +1,66 @@
+# moonraker_ender6_lcd
+
+Runs the [DGUS-reloaded-Klipper](https://github.com/Desuuuu/DGUS-reloaded-Klipper)
+touchscreen firmware with **stock Klipper**. A small Python service on the SBC
+talks to the screen over a UART (`/dev/ttyS1`) and to Klipper through
+Moonraker's websocket API. You don't need Desuuuu's Klipper fork.
+
+The UI logic (pages, variables, routines) is the fork's own
+`klippy/extras/t5uid1/dgus_reloaded/*.cfg`, used unchanged except that the boot
+page goes straight to the print status page when a print is running. The
+`t5uid1` runtime that ran those files inside Klippy is ported to
+`dgus_lcd/engine.py`.
+
+## Screen protocol
+
+The screen is a DWIN DMT48270C043_06WT (T5L, DGUS II). Its serial protocol
+and system variables are documented in [docs/PROTOCOL.md](docs/PROTOCOL.md)
+and implemented in `dgus_lcd/dgus_protocol.py`. Run the tests with
+`~/dgus-env/bin/python -m unittest discover -s tests -t .`.
+
+## Wiring
+
+Screen TX → SBC RX, screen RX → SBC TX, GND, 5V. 115200 baud.
+
+## Install
+
+```
+./install.sh
+```
+
+This creates `~/dgus-env` and installs `dgus_lcd.cfg` and `dgus_macros.cfg`
+into `~/printer_data/config/`. It also installs and starts the `dgus_lcd`
+systemd service and adds it to `moonraker.asvc`, so you can restart it from
+Mainsail.
+
+Optional: add `[include dgus_macros.cfg]` to `printer.cfg` to get `M300` and
+`DGUS_PLAY_SOUND`, which play sounds on the screen.
+
+Logs are written to `~/printer_data/logs/dgus_lcd.log`. For a debug run in the
+foreground:
+
+```
+sudo systemctl stop dgus_lcd
+~/dgus-env/bin/python -m dgus_lcd -v
+```
+
+## How it differs from the Klippy module
+
+| Klippy module                         | This service                                    |
+|---------------------------------------|-------------------------------------------------|
+| `DGUS_PRINT_START` / `DGUS_PRINT_END` | Detected from `print_stats.state` changes       |
+| `M73` progress                        | `display_status.progress`                       |
+| `M117` message                        | `display_status.message`                        |
+| `M300` / `DGUS_PLAY_SOUND`            | Macros in `dgus_macros.cfg` (`RESPOND PREFIX=dgus`) |
+| `is_busy()` (toolhead lookahead)      | `idle_timeout.state == "Printing"` or G-code from the screen still running |
+| Probe progress icons                  | Counts `probe at ... is z=` console lines       |
+| Volume/brightness saved to printer.cfg| Saved to `~/printer_data/dgus_lcd/state.json`   |
+
+The service also detects when the screen is power-cycled or reconnected, and
+re-initializes it. When Klipper is in shutdown or error, or Moonraker is down,
+the screen shows the reason.
+
+## License
+
+GPLv3, the same as the original project. The UI config and parts of the engine
+are © Desuuuu.
