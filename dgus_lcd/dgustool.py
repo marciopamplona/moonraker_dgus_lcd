@@ -16,7 +16,8 @@ import sys
 import time
 
 from . import dgus_protocol as p
-from .dgus_device import DGUSDevice, DeviceError, plan_upload, SCREEN_SIZE
+from .dgus_device import (DGUSDevice, DeviceError, SCREEN_SIZE, classify,
+                          plan_upload)
 
 
 def _int(s):
@@ -167,7 +168,12 @@ def cmd_upload(dev, args):
             files += f
             skipped += s
         else:
-            files.append((path, None, None))
+            try:
+                kind, index = classify(os.path.basename(path), args.allow_os)
+            except DeviceError as e:
+                skipped.append((path, str(e)))
+                continue
+            files.append((path, kind, index))
     for path, reason in skipped:
         print("skip  %s" % reason)
     if args.dry_run:

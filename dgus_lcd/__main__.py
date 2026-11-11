@@ -90,6 +90,8 @@ def parse_config(path):
         "notification_sound": i("notification_sound",
                                 fw.configuration["notification_sound"]),
         "save_state": make_state_saver(state_file),
+        "macro_exclude": {m.strip().upper() for m in
+                          s.get("macro_exclude", "").split(",") if m.strip()},
         "log_level": s.get("log_level", "INFO").upper(),
     }
     for axis in ("x", "y", "z"):

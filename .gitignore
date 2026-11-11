@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
+# build/ also holds python -m dgus_lcd.macros_screen output
 build/
 dist/
 .pytest_cache/
@@ -17,7 +18,7 @@ state.json
 
 # Vendor manuals (55 MB, DWIN copyright). Download links are in
 # docs/PROTOCOL.md; keep only our own docs in git.
-docs/*.pdf
+# docs/*.pdf
 
 # Editors / OS
 .vscode/
@@ -25,3 +26,4 @@ docs/*.pdf
 *.swp
 *~
 .DS_Store
+

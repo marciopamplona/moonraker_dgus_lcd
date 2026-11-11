@@ -20,6 +20,7 @@ import time
 import jinja2
 
 from . import dgus_protocol as proto
+from . import macro_params
 
 log = logging.getLogger("dgus.engine")
 
@@ -366,6 +367,9 @@ class Engine:
             'set_message': self.set_message,
             'bitwise_and': bitwise_and,
             'bitwise_or': bitwise_or,
+            'macro_params': self.macro_params,
+            'macro_command': self.macro_command,
+            'format_param': macro_params.format_value,
         }
         self._ctx = {
             "input": dict(g, page_name=self.page_name,
@@ -494,7 +498,26 @@ class Engine:
             'print_progress': min(100, max(0, int(round((progress or 0)
                                                         * 100)))),
             'print_duration': max(0, ps.get("print_duration", 0) or 0),
+            'macros': self.macro_list(),
         }
+
+    def macro_params(self, name):
+        """Parameters of a macro, parsed from its G-Code template."""
+        settings = self.status.get("configfile", {}).get("settings", {})
+        return macro_params.macro_params(settings, name or "")
+
+    def macro_command(self, name, values):
+        return macro_params.build_command(name, self.macro_params(name),
+                                          values or {})
+
+    def macro_list(self):
+        """User-visible [gcode_macro] names: no '_' prefix, minus
+        macro_exclude, sorted."""
+        exclude = self.opts.get("macro_exclude", ())
+        names = [o.split(" ", 1)[1] for o in self._objects
+                 if o.startswith("gcode_macro ")]
+        return sorted((n for n in names if not n.startswith("_")
+                       and n.upper() not in exclude), key=str.upper)
 
     # ------------------------------------------------------------------
     # Template helpers

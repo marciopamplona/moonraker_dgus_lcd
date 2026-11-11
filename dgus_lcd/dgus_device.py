@@ -342,9 +342,15 @@ class DGUSDevice:
         self.send(p.cmd_jpeg_download(BUFFER_VP, p.JPEG_SAVE, picture_id))
         self.wait_done(p.VP_JPEG_DOWNLOAD, timeout=10)
 
-    def upload_pixels(self, picture_id, rgb565, progress=None):
+    def upload_pixels(self, picture_id, rgb565, progress=None, blank_page=0):
         """Write a full-screen big-endian RGB565 frame into the picture
-        buffer and save it as picture `picture_id`."""
+        buffer and save it as picture `picture_id`.
+
+        Switches to page 0 first: it has no display variables in
+        DGUS-reloaded, so the screen won't draw text over the frame buffer
+        before it is saved.
+        """
+        self.page = blank_page
         total = len(rgb565)
         for off in range(0, total, BUFFER_BYTES):
             chunk = rgb565[off:off + BUFFER_BYTES]

@@ -28,6 +28,9 @@ sudo systemctl stop dgus_lcd
 sudo systemctl start dgus_lcd
 ```
 
+A **Macros** screen (More → Macros) lists your Klipper macros and runs
+them. It needs a small screen update; see [docs/MACROS.md](docs/MACROS.md).
+
 Tests: `~/dgus-env/bin/python -m unittest discover -s tests -t .`
 
 ## Wiring
