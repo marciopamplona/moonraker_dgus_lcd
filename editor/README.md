@@ -17,6 +17,22 @@ Work in progress; see [docs/EDITOR_PLAN.md](../docs/EDITOR_PLAN.md).
   pages, CFG boot page), replace the picture with any image. VP table with
   overlap checks. Simulator: click through pages, VPs editable, event log.
 
+- **M3** (done): picture editing. **Picture** mode next to Controls and
+  Simulate. Each page can have layers: image (PNG/JPG/BMP/GIF/WebP/SVG,
+  scaled), rectangle (rounded corners, gradient, inner border), ellipse,
+  line, text (system fonts or uploaded TTF/OTF/WOFF), and paint (brush and
+  eraser strokes). Every layer has visibility, lock, opacity and order. Tools:
+  select/move/resize, draw shapes by dragging, text, brush, eraser,
+  eyedropper. Every change flattens the layers into the page's 24-bit BMP
+  in the same undo step. There's optional ordered dithering to RGB565 and an
+  RGB565 preview. **Create pressed variant** copies the page (layers
+  included) and makes it the `Pic_On` picture of the page's buttons.
+
+  Imported pictures have no layers until you first change them; then the
+  original becomes a locked bottom layer, and it flattens back to exactly
+  the same pixels (tested), so only pages you edit change. Layer sources
+  live in the project as `art/` assets and are never exported to DWIN_SET.
+
 ### Keyboard
 
 | Key | |
@@ -26,6 +42,8 @@ Work in progress; see [docs/EDITOR_PLAN.md](../docs/EDITOR_PLAN.md).
 | Ctrl+D | duplicate it |
 | Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y | undo, redo |
 | Esc | deselect |
+| Picture mode: V R O L T B X I | select, rectangle, ellipse, line, text, brush, eraser, eyedropper |
+| Picture mode: arrows, Delete, Ctrl+D | nudge, delete, duplicate the selected layer |
 
 ### Simulator and the host
 
@@ -100,10 +118,11 @@ before typed editing (M2) exists.
 | `src/core/controls/geometry.ts`, `templates.ts` | move/resize by rewriting position fields; new-control templates |
 | `src/core/project/ops.ts`, `vp.ts` | page and control edits, page renumbering; VP usage, overlaps, allocation |
 | `src/core/sim/simulator.ts` | VP memory, touch actions, what displays show |
+| `src/core/art/` | layer model, Canvas2D renderer (any implementation), RGB565 dithering, flatten/pressed-variant ops |
 | `src/core/project/` | project model, `decompile` (DWIN_SET → project), `compile` (project → DWIN_SET), blank template |
 | `src/io/` | `.dgusproj` zip, DWIN_SET zip/folder import, IndexedDB store |
 | `src/ui/` | Preact app: store + autosave, page list, canvas, inspector |
-| `test/` | vitest; `ui.test.tsx` renders the app in happy-dom |
+| `test/` | vitest; `ui.test.tsx` and `picture.test.tsx` render the app in happy-dom; `@napi-rs/canvas` gives the art tests a real Canvas2D |
 
 ## File formats (T5UID1)
 

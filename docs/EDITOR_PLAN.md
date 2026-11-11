@@ -125,7 +125,7 @@ renders it.
 - **M2 – controls editor.** ✅ Done. Canvas placement/resizing, Inspector, VP table +
   conflict checks, undo/redo, page add/remove/reorder (renumbers references),
   simulator.
-- **M3 – bitmap editor.** Layers, shapes, TTF text, image import with resize, a
+- **M3 – bitmap editor.** ✅ Done. Layers, shapes, TTF text, image import with resize, a
   pressed-state variant, RGB565 preview.
 - **M4 – icons, fonts, config.** Icon library editor + ICO encoder, TTF→HZK
   generator, CFG form, 22_config table. Templates: blank and DGUS-reloaded.

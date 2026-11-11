@@ -74,15 +74,21 @@ export function Toolbar() {
           {TEMPLATES.filter((t) => t.kind === "display").map((t) => <option key={t.id} value={t.id} title={t.hint}>{t.label}</option>)}
         </optgroup>
       </select>
-      <button
-        class={s.mode === "simulate" ? "small primary" : "small"} title="Click through the project in the browser"
-        onClick={() => {
-          if (s.mode === "edit") resetSim();
-          setState({ mode: s.mode === "edit" ? "simulate" : "edit", selection: null });
-        }}
-      >
-        {s.mode === "simulate" ? "■ Stop" : "▶ Simulate"}
-      </button>
+      <span class="modes" role="group" aria-label="Mode">
+        <button class={s.mode === "edit" ? "small active" : "small"} title="Place and edit controls"
+          onClick={() => setState({ mode: "edit", layerId: null })}>Controls</button>
+        <button class={s.mode === "picture" ? "small active" : "small"} title="Draw the page picture"
+          onClick={() => setState({ mode: "picture", selection: null })}>Picture</button>
+        <button
+          class={s.mode === "simulate" ? "small primary" : "small"} title="Click through the project in the browser"
+          onClick={() => {
+            if (s.mode !== "simulate") resetSim();
+            setState({ mode: s.mode === "simulate" ? "edit" : "simulate", selection: null, layerId: null });
+          }}
+        >
+          {s.mode === "simulate" ? "■ Stop" : "▶ Simulate"}
+        </button>
+      </span>
       <span class="spacer" />
       <label class="small">
         Zoom

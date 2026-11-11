@@ -6,6 +6,8 @@ import { updateControl } from "../core/project/ops";
 import { T5UID1 } from "../core/profile/t5uid1";
 import { jumpOf, pageControls, vpHex, type PlacedControl } from "./controls";
 import { iconCanvas, iconLibrary, pictureCanvas } from "./render";
+import { ArtOverlay } from "./ArtOverlay";
+import { quantize565 } from "../core/art/dither";
 import { edit, endGroup, goPage, setState, simChanged, syncSim, useStore } from "./store";
 
 type Handle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
@@ -71,6 +73,7 @@ export function PageCanvas() {
   const { w, h } = T5UID1.screen;
   const placed = page ? pageControls(doc, page) : [];
   const sim = s.mode === "simulate";
+  const picture = s.mode === "picture";
 
   useEffect(() => {
     const c = ref.current;
@@ -126,11 +129,16 @@ export function PageCanvas() {
         drawText(ctx, o.buffer + "_", o.cursor[0], o.cursor[1], o.fontSize, o.fontSize / 2, o.color || 0xffff,
           o.kind === "number" ? "right" : "left");
       }
-    } else if (s.layers.icons) {
+    } else if (s.layers.icons && !picture) {
       for (const p of placed) {
         const ic = p.info.icon;
         if (ic) drawIcon(ic[0], ic[1], ic[2], ic[3], ic[4]);
       }
+    }
+    if (s.preview565) {
+      const img = ctx.getImageData(0, 0, w, h);
+      quantize565(img.data, w, h, false);
+      ctx.putImageData(img, 0, 0);
     }
   });
 
@@ -200,6 +208,7 @@ export function PageCanvas() {
 
   const box = (r: Rect) => ({ x: r[0], y: r[1], width: Math.max(1, r[2] - r[0] + 1), height: Math.max(1, r[3] - r[1] + 1) });
   const shown = placed.filter((p) => p.info.bounds && (sim ? p.kind === "touch" && !s.sim.overlay : s.layers[p.kind]));
+  const guides = picture ? placed.filter((p) => p.info.bounds && s.layers[p.kind]) : [];
   const selected = placed.find((p) => p.control.uid === sel?.uid);
   const hs = 7 / s.zoom;
 
@@ -207,6 +216,14 @@ export function PageCanvas() {
     <section class="stage">
       <div class={`screen${sim ? " simulating" : ""}`} style={{ width: w * s.zoom, height: h * s.zoom }}>
         <canvas ref={ref} width={w} height={h} style={{ width: "100%", height: "100%" }} />
+        {picture ? (
+          <>
+            <svg viewBox={`0 0 ${w} ${h}`} class="overlay guides">
+              {guides.map((p) => <rect key={p.control.uid} {...box(p.info.bounds!)} class={`guide ${p.kind}`} />)}
+            </svg>
+            <ArtOverlay />
+          </>
+        ) : (
         <svg
           ref={svg} viewBox={`0 0 ${w} ${h}`} class="overlay"
           onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}
@@ -245,10 +262,13 @@ export function PageCanvas() {
               );
             })}
         </svg>
+        )}
       </div>
       <p class="muted small status">
         Page {page.id} · {page.background ?? "no picture"} ·{" "}
-        {hover
+        {picture
+          ? `Picture: ${page.art ? `${page.art.layers.length} layer(s)` : "no layers yet (the first edit turns the picture into a locked base layer)"} · tool: ${s.tool} · shortcuts V R O L T B X I`
+          : hover
           ? `${hover.info.typeName} — VP ${vpHex(hover.info.vp)}${hover.info.estimated ? " (size estimated)" : ""}`
           : sim
             ? s.sim.overlay

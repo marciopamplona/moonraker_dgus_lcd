@@ -20,3 +20,7 @@ export * from "./project/ops";
 export * from "./project/vp";
 export * from "./sim/simulator";
 export * from "./sim/host";
+export * from "./art/schema";
+export * from "./art/render";
+export * from "./art/dither";
+export * from "./art/ops";

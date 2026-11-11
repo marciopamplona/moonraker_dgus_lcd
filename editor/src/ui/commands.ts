@@ -5,7 +5,8 @@ import { TEMPLATES, template } from "../core/controls/templates";
 import { addControl, addPage, deleteControl, duplicateControl, findControl, updateControl } from "../core/project/ops";
 import { allocVp } from "../core/project/vp";
 import { T5UID1 } from "../core/profile/t5uid1";
-import { edit, getState, goPage, redo, setState, undo } from "./store";
+import { deleteLayer, duplicateSelectedLayer, nudgeLayer } from "./artCommands";
+import { edit, getState, goPage, redo, setState, undo, type ArtTool } from "./store";
 
 export { TEMPLATES };
 
@@ -72,8 +73,9 @@ export function onKey(e: KeyboardEvent): void {
     redo();
     return;
   }
-  if (s.mode !== "edit") return;
   const step = e.shiftKey ? 10 : 1;
+  if (s.mode === "picture") return pictureKey(e, k, mod, step);
+  if (s.mode !== "edit") return;
   const moves: Record<string, [number, number]> = {
     arrowleft: [-step, 0], arrowright: [step, 0], arrowup: [0, -step], arrowdown: [0, step],
   };
@@ -88,5 +90,30 @@ export function onKey(e: KeyboardEvent): void {
     duplicateSelected();
   } else if (k === "escape") {
     setState({ selection: null });
+  }
+}
+
+const TOOL_KEYS: Record<string, ArtTool> = {
+  v: "select", r: "rect", o: "ellipse", l: "line", t: "text", b: "brush", x: "eraser", i: "eyedropper",
+};
+
+function pictureKey(e: KeyboardEvent, k: string, mod: boolean, step: number): void {
+  const s = getState();
+  const moves: Record<string, [number, number]> = {
+    arrowleft: [-step, 0], arrowright: [step, 0], arrowup: [0, -step], arrowdown: [0, step],
+  };
+  if (moves[k] && s.layerId) {
+    e.preventDefault();
+    nudgeLayer(...moves[k]!);
+  } else if ((k === "delete" || k === "backspace") && s.layerId) {
+    e.preventDefault();
+    deleteLayer();
+  } else if (mod && k === "d" && s.layerId) {
+    e.preventDefault();
+    duplicateSelectedLayer();
+  } else if (k === "escape") {
+    setState({ layerId: null, tool: "select" });
+  } else if (!mod && TOOL_KEYS[k]) {
+    setState({ tool: TOOL_KEYS[k]! });
   }
 }

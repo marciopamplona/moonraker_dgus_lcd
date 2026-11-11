@@ -1,4 +1,5 @@
 import { Inspector } from "./Inspector";
+import { LayersPanel } from "./LayersPanel";
 import { SimPanel } from "./SimPanel";
 import { VpPanel } from "./VpPanel";
 import { setState, useStore } from "./store";
@@ -6,6 +7,7 @@ import { setState, useStore } from "./store";
 export function Panel() {
   const s = useStore();
   if (s.mode === "simulate") return <aside class="inspector"><SimPanel /></aside>;
+  if (s.mode === "picture") return <aside class="inspector"><LayersPanel /></aside>;
   return (
     <aside class="inspector">
       <div class="tabs">

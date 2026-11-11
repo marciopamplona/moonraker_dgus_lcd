@@ -2,6 +2,7 @@
 // by key (assets/<key> in a .dgusproj zip). Controls keep their exact
 // bytes, so decompile -> compile is byte-identical; typed editing (M2) works
 // on top of these bytes through the descriptors in controls/describe.ts.
+import type { ArtFont, Artwork } from "../art/schema";
 import type { DwinFileKind } from "../formats/dwinset";
 
 export const PROJECT_FORMAT = "dgus-studio";
@@ -20,6 +21,9 @@ export interface Page {
   background: string | null;
   touch: Control[];
   display: Control[];
+  /** Editable source of the picture (absent for imported pictures until
+   * they are first edited). */
+  art?: Artwork;
 }
 
 export interface ProjectFile {
@@ -53,6 +57,8 @@ export interface Project {
   files: ProjectFile[];
   touchFile: string; // e.g. "13_touch.bin"
   variables: { file: string; header: string; trailer: string };
+  /** Fonts uploaded for text layers. */
+  artFonts?: ArtFont[];
   /** Simulator settings; when absent, host rules are auto-detected. */
   sim?: { rules: HostRule[] };
 }

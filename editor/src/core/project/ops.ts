@@ -163,15 +163,17 @@ export function duplicatePage(doc: ProjectDoc, id: number, to = freePageId(doc, 
     id: to, name, background,
     touch: src.touch.map((c) => ({ uid: newId("t"), bytes: hex(setTouchPage(fromHex(c.bytes), to)) })),
     display: src.display.map((c) => ({ uid: newId("d"), bytes: c.bytes })),
+    ...(src.art ? { art: structuredClone(src.art) } : {}),
   };
   doc.project.pages.push(page);
   sortPages(doc);
   return page;
 }
 
-/** Replace a page's picture with BMP data. */
+/** Replace a page's picture with BMP data (drops its artwork layers). */
 export function setBackground(doc: ProjectDoc, id: number, bmp: Uint8Array): void {
   const p = getPage(doc, id);
+  delete p.art;
   Bitmap.load(bmp); // validate
   const name = p.background ?? fileName("bitmap", id, p.name, "bmp");
   if (!p.background && usedNames(doc).has(name)) throw new Error(`file ${name} exists`);

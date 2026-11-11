@@ -147,3 +147,34 @@ textarea.raw { width: 100%; background: var(--bg); border: 1px solid var(--line)
 .rules li button { margin-left: auto; padding: 0 6px; }
 .rule-form { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 4px; margin: 6px 0; }
 .rule-form input { min-width: 0; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+
+/* --- M3 picture editing --- */
+.modes { display: inline-flex; }
+.modes button { border-radius: 0; margin-left: -1px; }
+.modes button:first-child { border-radius: 6px 0 0 6px; }
+.modes button:last-child { border-radius: 0 6px 6px 0; }
+.modes button.active { background: var(--hover); border-color: var(--accent); font-weight: 600; }
+.tools { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; margin: 6px 0; }
+.tool { padding: 4px 0; font-size: 15px; }
+.tool.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.layers { list-style: none; padding: 0; margin: 0 0 6px; border: 1px solid var(--line); border-radius: 4px; max-height: 30vh; overflow: auto; }
+.layers li { display: flex; align-items: center; gap: 2px; padding: 1px 4px; border-bottom: 1px solid var(--line); }
+.layers li:last-child { border-bottom: 0; }
+.layers li.active { background: var(--hover); }
+.layers li button.ghost { padding: 0 4px; min-width: 22px; }
+.lname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg) !important; }
+.licon { display: inline-block; width: 18px; color: var(--muted); }
+.props { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
+.prop { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
+.prop.col { flex-direction: column; align-items: stretch; }
+.prop > span:first-child { color: var(--muted); }
+.prop input:not([type="checkbox"]):not([type="color"]):not([type="range"]), .prop textarea, .prop select {
+  padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+.prop input[type="number"] { width: 5.5em; }
+.grid4 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+.overlay.art { touch-action: none; }
+.overlay.guides { pointer-events: none; }
+.guide { fill: none; stroke-width: 1; vector-effect: non-scaling-stroke; stroke-dasharray: 2 3; opacity: 0.55; }
+.guide.touch { stroke: var(--touch); }
+.guide.display { stroke: var(--display); }
+.layer-box { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 3; vector-effect: non-scaling-stroke; pointer-events: none; }

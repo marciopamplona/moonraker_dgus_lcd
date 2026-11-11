@@ -5,6 +5,7 @@ import { now, type ProjectDoc } from "../core/project/schema";
 import { hostRules } from "../core/sim/host";
 import { Simulator } from "../core/sim/simulator";
 import * as idb from "../io/idb";
+import { loadFonts, loadImages } from "./artEnv";
 
 export type SaveState = "off" | "idle" | "pending" | "saving" | "saved" | "error";
 
@@ -12,6 +13,8 @@ export interface Selection {
   kind: "touch" | "display";
   uid: string;
 }
+
+export type ArtTool = "select" | "rect" | "ellipse" | "line" | "text" | "brush" | "eraser" | "eyedropper";
 
 export interface State {
   doc: ProjectDoc | null;
@@ -25,7 +28,13 @@ export interface State {
   /** Undo / redo stacks of whole documents (assets are shared, not copied). */
   past: ProjectDoc[];
   future: ProjectDoc[];
-  mode: "edit" | "simulate";
+  mode: "edit" | "picture" | "simulate";
+  /** Picture mode: selected layer, tool and brush. */
+  layerId: string | null;
+  tool: ArtTool;
+  brush: { color: string; width: number };
+  /** Show page pictures as the screen will (RGB565). */
+  preview565: boolean;
   panel: "inspect" | "vps";
   sim: Simulator;
   /** Bumped when the simulator's state changes. */
@@ -37,6 +46,7 @@ let state: State = {
   save: idb.available() ? "idle" : "off", saveError: "",
   layers: { touch: true, display: true, icons: true }, zoom: 2,
   past: [], future: [], mode: "edit", panel: "inspect", sim: new Simulator(0), simTick: 0,
+  layerId: null, tool: "select", brush: { color: "#ffffff", width: 6 }, preview565: false,
 };
 const subs = new Set<() => void>();
 
@@ -91,9 +101,11 @@ export async function flushSave(): Promise<void> {
 export function openDoc(doc: ProjectDoc, warnings: string[] = [], persist = true): void {
   const pageId = doc.project.pages[0]?.id ?? null;
   setState({
-    doc, warnings, selection: null, pageId, past: [], future: [], mode: "edit",
+    doc, warnings, selection: null, pageId, past: [], future: [], mode: "edit", layerId: null, tool: "select",
     sim: makeSim(doc, pageId ?? 0), simTick: 0,
   });
+  // decode layer images and register uploaded fonts, then redraw
+  void Promise.all([loadImages(doc), loadFonts(doc)]).then(() => state.doc === doc && setState({}));
   if (persist) {
     void idb.requestPersistence();
     scheduleSave();
@@ -178,7 +190,7 @@ export function redo(): void {
 export function goPage(id: number): void {
   state.sim.page = id;
   state.sim.closeOverlay();
-  setState({ pageId: id, selection: null });
+  setState({ pageId: id, selection: null, layerId: null });
 }
 
 export function simChanged(): void {
