@@ -24,12 +24,50 @@ Every byte example on this page comes from those guides and is checked in
 
 ## Link
 
-- UART2, 8N1, 115200 baud, TTL levels (10-pin 1.0 mm connector, 5 V).
+- UART2, 8N1, 115200 baud (see [Baud rate](#baud-rate)), TTL levels (10-pin 1.0 mm connector, 5 V).
 - On this machine: `/dev/ttyS1`. Screen TX → SBC RX, screen RX → SBC TX.
 - All multi-byte values are **big-endian**, except the CRC.
 - The screen is variable-driven: everything, including page changes,
   backlight and sound, is done by reading and writing 16-bit words in its
   128 KB SRAM (VP addresses 0x0000–0xFFFF).
+
+## Baud rate
+
+The rate is set only in `T5UID1.CFG`, which the screen reads from the SD
+card. T5UID1 has no runtime register for it (0x000C is T5L-only), and
+`dgustool` refuses to send the CFG over serial.
+
+- Bytes 0x09–0x0A hold the setting, **7 833 600 / baud** (big-endian, at
+  most 0x03E7). The stock value is `00 44`, which is 115200.
+- It has to be a whole number, so only some rates are exact. The SBC side
+  (Orange Pi Zero2, H616) divides a 24 MHz clock by 16, which limits the
+  choice further:
+
+| Baud | Screen value | Screen error | SBC error | Usable |
+|---|---|---|---|---|
+| 115200 | `00 44` | 0% | ~0.2% | yes (stock) |
+| 230400 | `00 22` | 0% | ~7% | no |
+| **250000** | `00 1F` | +1.1% | 0% | **yes, fastest** |
+| 460800 | `00 11` | 0% | ~8.5% | no |
+| 500000 | `00 10` | −2.1% | 0% | marginal |
+
+The Klipper status traffic fits easily in 115200. A higher rate mainly
+speeds up `dgustool upload`.
+
+### Switching to 250000
+
+`screen/cfg/T5UID1.CFG` is the 1.0.2 release CFG with only the baud
+changed (`screen_files.set_cfg_baud`; `test_prebuilt_is_current` checks it).
+
+1. Run `./make_sdcard.sh` (default `--baud 250000`) and copy
+   `build/sdcard/DWIN_SET` to a FAT32 SD card with 4 KB clusters. A card
+   with only `DWIN_SET/T5UID1.CFG` from `screen/cfg/` also works.
+2. Power off, insert the card into the screen and power on. Wait for it to
+   finish, remove the card and power-cycle.
+3. Set `baud: 250000` in `~/printer_data/config/dgus_lcd.cfg`, restart the
+   service, and pass `-b 250000` to `dgustool`.
+
+To go back, flash the release `T5UID1.CFG` and set `baud: 115200`.
 
 ## Frame format
 

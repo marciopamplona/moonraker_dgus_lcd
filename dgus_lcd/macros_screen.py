@@ -76,7 +76,7 @@ ICON = (170, 170, 170)
 # Static text is drawn into the BMPs like the original pages: Segoe UI there,
 # Selawik (its open-licensed metric twin) here. Values measured on 1.0.2.
 FONT = os.path.join(os.path.dirname(os.path.dirname(
-    os.path.abspath(__file__))), "screen", "fonts", "selawk.ttf")
+    os.path.abspath(__file__))), "vendor", "selawik", "selawk.ttf")
 FONT_SIZE = 17
 TITLE_POS = (39, 4)          # text origin of "Settings" on page 9
 TITLE_COLOR = (190, 190, 190)
@@ -330,6 +330,18 @@ def fetch_release(dest):
     return os.path.join(dest, "DWIN_SET")
 
 
+RELEASE_CACHE = os.path.expanduser("~/.cache/dgus_lcd/release-1.0.2")
+
+
+def release_dir():
+    """The cached 1.0.2 DWIN_SET folder, downloaded on first use."""
+    release = os.path.join(RELEASE_CACHE, "DWIN_SET")
+    if not os.path.isdir(release):
+        print("downloading %s" % RELEASE_URL)
+        fetch_release(RELEASE_CACHE)
+    return release
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Build the Macros screen files")
     ap.add_argument("--release", help="unpacked DGUS-reloaded-Klipper 1.0.2 "
@@ -340,13 +352,7 @@ def main(argv=None):
     ap.add_argument("--preview", action="store_true",
                     help="also write PNG previews of the pages")
     args = ap.parse_args(argv)
-    release = args.release
-    if not release:
-        cache = os.path.expanduser("~/.cache/dgus_lcd/release-1.0.2")
-        release = os.path.join(cache, "DWIN_SET")
-        if not os.path.isdir(release):
-            print("downloading %s" % RELEASE_URL)
-            fetch_release(cache)
+    release = args.release or release_dir()
     for path in build(release, args.out, args.preview):
         print("wrote %s" % path)
     print("upload with: ~/dgus-env/bin/python -m dgus_lcd.dgustool upload "

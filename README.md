@@ -31,6 +31,14 @@ sudo systemctl start dgus_lcd
 A **Macros** screen (More → Macros) lists your Klipper macros and runs
 them. It needs a small screen update; see [docs/MACROS.md](docs/MACROS.md).
 
+### SD card image
+
+`./make_sdcard.sh` builds a complete, ready-to-copy `build/sdcard/DWIN_SET`.
+It contains the DGUS-reloaded 1.0.2 files from `vendor/`, where nothing is
+downloaded, and the Macros and Parameters pages, and a `T5UID1.CFG` set to 250000 baud. Use `--baud 115200` to keep
+the stock rate. Flashing steps are written to `build/sdcard/FLASHING.txt`.
+With the 250000 CFG, set `baud: 250000` in `dgus_lcd.cfg` after flashing.
+
 Tests: `~/dgus-env/bin/python -m unittest discover -s tests -t .`
 
 ## Wiring

@@ -134,9 +134,12 @@ resets at the end.
 
 ### Or flash from the SD card
 
-1. Copy the release `DWIN_SET` folder to a FAT32 card formatted with 4 KB
+1. Run `./make_sdcard.sh --baud 115200` to build `build/sdcard/DWIN_SET`
+   (the `vendor/` DWIN_SET with the Macros files already in it). Leave out `--baud`
+   to also switch the screen to 250000 baud (see PROTOCOL.md, "Baud
+   rate").
+2. Copy that `DWIN_SET` folder to a FAT32 card formatted with 4 KB
    clusters.
-2. Replace the four files with the ones from `screen/macros/`.
 3. Insert the card into the screen and power-cycle the printer.
 4. When the screen shows it has finished, remove the card and power-cycle
    again.
@@ -182,7 +185,7 @@ Things that are untested on real hardware:
 - **Fonts:**
   - The original titles and captions are Segoe UI, baked into the page
     images. The static "Macros" title and caption are drawn the same way,
-    with **Selawik** (`screen/fonts/`). Selawik is Microsoft's
+    with **Selawik** (`vendor/selawik/`). Selawik is Microsoft's
     open-licensed (OFL) Segoe UI substitute, and it matches size, colour
     and position.
   - Macro names change, so the screen draws them at runtime with its
