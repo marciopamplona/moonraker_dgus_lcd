@@ -118,7 +118,7 @@ renders it.
   parse→build is byte-identical for every file in the vendored DWIN_SET. A Python
   script (`editor/test/gen_fixtures.py`) emits JSON from `screen_files.py` to
   cross-check the decoded fields.
-- **M1 – import + viewer.** Open a DWIN_SET folder or zip, decompile it into a
+- **M1 – import + viewer.** ✅ Done, plus an IndexedDB autosave (requested 2026-11-11). Open a DWIN_SET folder or zip, decompile it into a
   Project, browse pages with control overlays, save/load `.dgusproj`, export a
   DWIN_SET zip. Done when import→export of DGUS-reloaded (and our Macros-patched
   set) is byte-identical.

@@ -1,20 +1,46 @@
 # DGUS Studio (browser editor for DWIN DGUS II screens)
 
 Work in progress; see [docs/EDITOR_PLAN.md](../docs/EDITOR_PLAN.md).
-**M0** (done): codecs for every file in a T5UID1 `DWIN_SET`, with golden tests.
+
+- **M0** (done): codecs for every file in a T5UID1 `DWIN_SET`, with golden tests.
+- **M1** (done): import a DWIN_SET (folder, drop, or zip) as a project, browse
+  pages with their controls drawn on top, inspect each control's fields,
+  save/open `.dgusproj`, export a DWIN_SET zip, autosave to IndexedDB.
+  Import → export is byte-identical for the vendored and Macros sets.
 
 ```sh
 cd editor
 npm install
 npm test            # vitest: golden round trips + Python cross-check
 npm run dev         # dev server
-npm run build       # -> dist/ (committed; open dist/index.html or serve it)
+npm run build       # -> dist/index.html, one self-contained file (committed);
+                    #    open it from disk or serve it from anywhere
 npm run fixtures    # regenerate test/fixtures from dgus_lcd/screen_files.py
 ```
 
-The M0 page (`dist/index.html`) opens a DWIN_SET folder, runs every file
-through its codec in the browser, and reports whether it comes back
-byte-identical.
+## Where files go
+
+Nothing is uploaded. Files you pick or drop are read into the tab's memory.
+The open project is autosaved in this browser's IndexedDB (database
+`dgus-studio`), so it survives a reload; it lives only in this browser
+profile, and clearing site data removes it. Projects there are listed on
+the start page and can be deleted from it. **Save .dgusproj** and
+**Export DWIN_SET** download files through the browser.
+
+A `.dgusproj` is a zip: `project.json` plus `assets/<DWIN_SET file name>`.
+Controls are stored as their raw entry bytes (hex), so nothing is lost
+before typed editing (M2) exists.
+
+## Layout
+
+| Path | |
+|---|---|
+| `src/core/formats/` | file codecs (no DOM) |
+| `src/core/controls/describe.ts` | field tables for every touch/display control type (V4.3 guide ch. 7–8), bounds for the canvas |
+| `src/core/project/` | project model, `decompile` (DWIN_SET → project), `compile` (project → DWIN_SET), blank template |
+| `src/io/` | `.dgusproj` zip, DWIN_SET zip/folder import, IndexedDB store |
+| `src/ui/` | Preact app: store + autosave, page list, canvas, inspector |
+| `test/` | vitest; `ui.test.tsx` renders the app in happy-dom |
 
 ## File formats (T5UID1)
 

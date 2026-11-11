@@ -9,3 +9,8 @@ export * from "./formats/cfg";
 export * from "./formats/config22";
 export * from "./formats/dwinset";
 export * from "./profile/t5uid1";
+export * from "./controls/describe";
+export * from "./project/schema";
+export * from "./project/decompile";
+export * from "./project/compile";
+export * from "./project/blank";

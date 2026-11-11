@@ -20,7 +20,6 @@ export const VAR_NAMES: Readonly<Record<number, string>> = {
   0x04: "Image animation",
   0x05: "Icon rotation",
   0x06: "Bit icon",
-  0x07: "Icon translation",
   0x10: "Data variable",
   0x11: "Text",
   0x12: "RTC",
@@ -28,11 +27,8 @@ export const VAR_NAMES: Readonly<Record<number, string>> = {
   0x14: "Scrolling text",
   0x20: "Trend curve",
   0x21: "Basic graphics",
-  0x22: "Area fill",
-  0x23: "Rect / table",
-  0x24: "Area scroll",
-  0x25: "Data window",
-  0x26: "Picture cut",
+  0x22: "Table",
+  0x25: "QR code",
 };
 
 export class VariableFile {
@@ -40,7 +36,7 @@ export class VariableFile {
   pages: Map<number, Uint8Array[]>;
   trailer: Uint8Array;
 
-  constructor(header: Uint8Array, pages: Map<number, Uint8Array[]>, trailer = new Uint8Array(0)) {
+  constructor(header: Uint8Array, pages: Map<number, Uint8Array[]>, trailer: Uint8Array = new Uint8Array(0)) {
     this.header = header.slice();
     this.pages = new Map([...pages].filter(([, v]) => v.length));
     this.trailer = trailer;
