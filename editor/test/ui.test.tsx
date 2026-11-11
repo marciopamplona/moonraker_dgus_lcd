@@ -184,4 +184,25 @@ describe("UI", () => {
     await click(buttonByText("■ Stop"));
     expect(getState().mode).toBe("edit");
   });
+
+  it("simulator follows DGUS-reloaded host page switches (home -> settings)", async () => {
+    const { doc } = decompile(pickDwinSet(list(VENDOR_SET).map((n) => [n, read(VENDOR_SET, n)])), "Vendor");
+    await act(() => openDoc(doc, [], false));
+    await click([...root.querySelectorAll(".page")].find((b) => b.textContent?.includes("home")));
+    await click(buttonByText("▶ Simulate"));
+    const settings = [...root.querySelectorAll("rect.ctl.sim")]
+      .find((r) => /VP 0x2000 {2}→ page 9 \(host\)/.test(r.querySelector("title")!.textContent!));
+    expect(settings).toBeDefined();
+    await click(settings);
+    expect(getState().pageId).toBe(9);
+    expect(root.textContent).toContain("→ page 9 (host)");
+    expect(root.textContent).toContain("Detected DGUS-reloaded");
+    // edit mode: double-click also follows the host jump
+    await click(buttonByText("■ Stop"));
+    await click([...root.querySelectorAll(".page")].find((b) => b.textContent?.includes("home")));
+    const again = [...root.querySelectorAll("rect.ctl.touch")]
+      .find((r) => r.querySelector("title")!.textContent!.includes("→ page 9 (host)"))!;
+    await fire(again, new MouseEvent("dblclick", { bubbles: true }));
+    expect(getState().pageId).toBe(9);
+  });
 });

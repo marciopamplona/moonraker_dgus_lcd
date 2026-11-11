@@ -19,3 +19,4 @@ export * from "./controls/templates";
 export * from "./project/ops";
 export * from "./project/vp";
 export * from "./sim/simulator";
+export * from "./sim/host";

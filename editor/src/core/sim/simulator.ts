@@ -4,14 +4,15 @@
 // pages, filling VPs) is not simulated; the user edits VPs instead.
 import { fromHex } from "../bytes";
 import { describeTouch, describeVar, type ControlInfo } from "../controls/describe";
-import type { Page } from "../project/schema";
+import type { HostRule, Page } from "../project/schema";
+import { hostTarget } from "./host";
 
 const field = (i: ControlInfo, name: string) => i.fields.find((f) => f.name === name)?.value ?? 0;
 
 export type SimEvent =
   | { type: "write"; vp: number; value: number; words: number; source: string }
   | { type: "key"; code: number }
-  | { type: "jump"; page: number }
+  | { type: "jump"; page: number; via?: "host" }
   | { type: "info"; text: string };
 
 export interface InputRequest {
@@ -49,9 +50,24 @@ export class Simulator {
   mem = new Map<number, number>();
   page: number;
   log: SimEvent[] = [];
+  /** Host page-switch rules, and the pages that exist. */
+  rules: HostRule[] = [];
+  pages: Set<number> | null = null;
 
-  constructor(page: number) {
+  constructor(page: number, rules: HostRule[] = [], pages?: Iterable<number>) {
     this.page = page;
+    this.rules = rules;
+    this.pages = pages ? new Set(pages) : null;
+  }
+
+  /** Apply host rules to a write; returns the events they cause. */
+  private host(ev: SimEvent): SimEvent[] {
+    if (ev.type !== "write") return [];
+    const to = hostTarget(this.rules, ev.vp, this.read(ev.vp, 1, false));
+    if (to === null) return [];
+    if (this.pages && !this.pages.has(to)) return [{ type: "info", text: `host: page ${to} doesn't exist` }];
+    this.page = to;
+    return [{ type: "jump", page: to, via: "host" }];
   }
 
   get(vp: number): number {
@@ -163,6 +179,7 @@ export class Simulator {
       this.page = i.jumpTo;
       events.push({ type: "jump", page: i.jumpTo });
     }
+    events.push(...events.flatMap((ev) => this.host(ev)));
     this.log.push(...events.filter((x) => x.type !== "write"));
     return { events, input };
   }
@@ -182,7 +199,8 @@ export class Simulator {
     const raw = Math.round(n * 10 ** req.nDot);
     if (req.min !== null && raw < req.min) return `below the minimum (${req.min / 10 ** req.nDot})`;
     if (req.max !== null && raw > req.max) return `above the maximum (${req.max / 10 ** req.nDot})`;
-    this.write(req.vp, req.words, raw, "number input");
+    const ev = this.write(req.vp, req.words, raw, "number input");
+    this.log.push(...this.host(ev));
     return null;
   }
 

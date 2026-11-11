@@ -27,10 +27,21 @@ Work in progress; see [docs/EDITOR_PLAN.md](../docs/EDITOR_PLAN.md).
 | Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y | undo, redo |
 | Esc | deselect |
 
+### Simulator and the host
+
+The screen's own page jumps (`Pic_Next`) always work. Projects like
+DGUS-reloaded don't use them: their buttons send a key code, and the printer
+service switches pages. **Host rules** in the Simulator panel stand in for
+that: "when VP X is written, go to page <value>" or "…to page P when the
+value is V". For DGUS-reloaded the rules (VPs 0x2000/0x2002/0x2003, see
+`dgus_lcd/firmware/dgus_reloaded/vars_in.cfg`) are detected automatically.
+Editing them saves your own set in the project. Double-click in edit mode
+follows them too.
+
 ### Simulator limits
 
-It models the screen, not the printer service: VPs only change when you
-press controls or type values in the panel. Popup menus, RTC, text-scroll
+Apart from host rules it models the screen, not the printer service: VPs
+only change when you press controls or type values in the panel. Popup menus, RTC, text-scroll
 and graphics aren't simulated. Text is drawn with the browser's monospace
 font, not the screen's HZK fonts.
 
@@ -38,12 +49,21 @@ font, not the screen's HZK fonts.
 cd editor
 npm install
 npm test            # vitest: golden round trips + Python cross-check
+npm run test:pi     # the same on the Pi: memory-capped, one worker (use this there)
 npm run dev         # dev server on http://<pi-ip>:5173 (listens on the LAN)
 npm run preview     # serve the built dist/ on http://<pi-ip>:4173
 npm run build       # -> dist/index.html, one self-contained file (committed);
                     #    open it from disk or serve it from anywhere
 npm run fixtures    # regenerate test/fixtures from dgus_lcd/screen_files.py
 ```
+
+## Running tests on the Pi
+
+The Pi has 1 GB shared with Klipper, and parallel test workers have frozen
+it. `npm run test:pi` (`scripts/test-pi.sh`) runs vitest with one worker in
+a `systemd-run --user` scope capped at 280 MB, so the kernel kills the tests
+rather than the board stalling. It refuses to start with less than 300 MB
+available (stop `npm run dev` first if needed).
 
 ## Where files go
 

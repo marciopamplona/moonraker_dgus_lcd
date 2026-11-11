@@ -10,6 +10,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:pi": "scripts/test-pi.sh",
     "typecheck": "tsc --noEmit",
     "fixtures": "python3 test/gen_fixtures.py"
   },

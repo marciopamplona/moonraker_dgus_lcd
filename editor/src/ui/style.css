@@ -142,3 +142,8 @@ textarea.raw { width: 100%; background: var(--bg); border: 1px solid var(--line)
 .ctl.sim { fill: transparent; stroke: none; cursor: pointer; }
 .ctl.sim:hover { fill: rgb(255 255 255 / 0.12); stroke: rgb(255 255 255 / 0.5); stroke-width: 1; }
 .simulating { outline: 2px solid var(--good); }
+.rules { list-style: none; padding: 0; margin: 4px 0; }
+.rules li { display: flex; gap: 4px; align-items: center; }
+.rules li button { margin-left: auto; padding: 0 6px; }
+.rule-form { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 4px; margin: 6px 0; }
+.rule-form input { min-width: 0; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }

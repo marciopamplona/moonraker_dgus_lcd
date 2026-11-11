@@ -8,7 +8,7 @@ import {
 } from "../core/project/ops";
 import type { Page, ProjectDoc } from "../core/project/schema";
 import { T5UID1 } from "../core/profile/t5uid1";
-import { pageControls, vpHex, type PlacedControl } from "./controls";
+import { jumpOf, pageControls, vpHex, type PlacedControl } from "./controls";
 import { imageToBitmap, type Fit } from "./images";
 import { edit, goPage, setState, useStore } from "./store";
 
@@ -102,9 +102,15 @@ function ControlInspector({ cur, page, doc }: { cur: PlacedControl; page: Page; 
         <button class="small" disabled={idx >= list.length - 1} onClick={() => edit((d) => reorderControl(d, uid, 1))}>Front</button>
         <button class="small danger" title="Delete" onClick={() => edit((d) => deleteControl(d, uid))}>Delete</button>
       </div>
-      {i.jumpTo !== null && (
-        <p><button class="link" onClick={() => goPage(i.jumpTo!)}>Go to page {i.jumpTo} →</button></p>
-      )}
+      {(() => {
+        const j = jumpOf(doc, i);
+        return j && (
+          <p>
+            <button class="link" onClick={() => goPage(j.page)}>Go to page {j.page} →</button>
+            {j.via === "host" && <span class="muted small"> (host switches page on this key)</span>}
+          </p>
+        );
+      })()}
       <table class="fields">
         <tbody>
           {fields.map((f) => (

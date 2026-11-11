@@ -4,9 +4,9 @@ import type { Rect } from "../core/formats/touch13";
 import { from565 } from "../core/formats/rgb565";
 import { updateControl } from "../core/project/ops";
 import { T5UID1 } from "../core/profile/t5uid1";
-import { pageControls, vpHex, type PlacedControl } from "./controls";
+import { jumpOf, pageControls, vpHex, type PlacedControl } from "./controls";
 import { iconCanvas, iconLibrary, pictureCanvas } from "./render";
-import { edit, endGroup, goPage, setState, simChanged, useStore } from "./store";
+import { edit, endGroup, goPage, setState, simChanged, syncSim, useStore } from "./store";
 
 type Handle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 const HANDLES: Handle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
@@ -137,7 +137,7 @@ export function PageCanvas() {
 
   const press = (e: MouseEvent, p: PlacedControl) => {
     const [x, y] = toScreen(e);
-    const r = s.sim.press(p.bytes, x, y);
+    const r = syncSim().press(p.bytes, x, y);
     if (r.input) {
       const lim = r.input.min !== null ? ` (${r.input.min / 10 ** r.input.nDot} … ${(r.input.max ?? 0) / 10 ** r.input.nDot})` : "";
       const v = prompt(r.input.kind === "number" ? `Number for VP ${vpHex(r.input.vp)}${lim}` : `Text for VP ${vpHex(r.input.vp)}`);
@@ -165,7 +165,8 @@ export function PageCanvas() {
         >
           {shown.map((p) => {
             const isSel = sel?.uid === p.control.uid;
-            const title = `${p.info.typeName}  VP ${vpHex(p.info.vp)}${p.info.jumpTo !== null ? `  → page ${p.info.jumpTo}${sim ? "" : " (double-click)"}` : ""}`;
+            const j = jumpOf(doc, p.info);
+            const title = `${p.info.typeName}  VP ${vpHex(p.info.vp)}${j ? `  → page ${j.page}${j.via === "host" ? " (host)" : ""}${sim ? "" : " (double-click)"}` : ""}`;
             return (
               <rect
                 key={p.control.uid}
@@ -176,8 +177,8 @@ export function PageCanvas() {
                 onPointerDown={(e) => startDrag(e, p, null)}
                 onClick={(e) => sim && press(e, p)}
                 onDblClick={() => {
-                  const to = p.info.jumpTo;
-                  if (!sim && to !== null && doc.project.pages.some((pg) => pg.id === to)) goPage(to);
+                  const to = j?.page;
+                  if (!sim && to !== undefined && doc.project.pages.some((pg) => pg.id === to)) goPage(to);
                 }}
               >
                 <title>{title}</title>

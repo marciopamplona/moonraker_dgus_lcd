@@ -2,6 +2,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { findControl } from "../core/project/ops";
 import { now, type ProjectDoc } from "../core/project/schema";
+import { hostRules } from "../core/sim/host";
 import { Simulator } from "../core/sim/simulator";
 import * as idb from "../io/idb";
 
@@ -91,7 +92,7 @@ export function openDoc(doc: ProjectDoc, warnings: string[] = [], persist = true
   const pageId = doc.project.pages[0]?.id ?? null;
   setState({
     doc, warnings, selection: null, pageId, past: [], future: [], mode: "edit",
-    sim: new Simulator(pageId ?? 0), simTick: 0,
+    sim: makeSim(doc, pageId ?? 0), simTick: 0,
   });
   if (persist) {
     void idb.requestPersistence();
@@ -183,8 +184,22 @@ export function simChanged(): void {
   setState({ simTick: state.simTick + 1, ...(state.sim.page !== state.pageId ? { pageId: state.sim.page } : {}) });
 }
 
+function makeSim(doc: ProjectDoc | null, page: number): Simulator {
+  return doc ? new Simulator(page, hostRules(doc).rules, doc.project.pages.map((p) => p.id)) : new Simulator(page);
+}
+
 export function resetSim(): void {
-  setState({ sim: new Simulator(state.pageId ?? 0), simTick: state.simTick + 1 });
+  setState({ sim: makeSim(state.doc, state.pageId ?? 0), simTick: state.simTick + 1 });
+}
+
+/** Keep the simulator's rules and page list in step with the project. */
+export function syncSim(): Simulator {
+  const { sim, doc } = state;
+  if (doc) {
+    sim.rules = hostRules(doc).rules;
+    sim.pages = new Set(doc.project.pages.map((p) => p.id));
+  }
+  return sim;
 }
 
 if (typeof window !== "undefined") {

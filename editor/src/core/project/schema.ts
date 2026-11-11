@@ -28,6 +28,16 @@ export interface ProjectFile {
   kind: DwinFileKind;
 }
 
+/** Stand-in for the host (printer service) in the simulator: when `vp` is
+ * written, switch page. Without `value`, the written value is the page id;
+ * with it, switch to `page` when the written value equals `value`. */
+export interface HostRule {
+  vp: number;
+  value?: number;
+  page?: number;
+  note?: string;
+}
+
 export interface Project {
   format: typeof PROJECT_FORMAT;
   version: number;
@@ -43,6 +53,8 @@ export interface Project {
   files: ProjectFile[];
   touchFile: string; // e.g. "13_touch.bin"
   variables: { file: string; header: string; trailer: string };
+  /** Simulator settings; when absent, host rules are auto-detected. */
+  sim?: { rules: HostRule[] };
 }
 
 /** A project with its binary assets. */
