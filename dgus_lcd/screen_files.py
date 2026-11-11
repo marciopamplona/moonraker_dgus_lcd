@@ -338,3 +338,47 @@ def fill_texture(bm, x0, y0, x1, y1, src, sx, sy, sw, sh):
             d = (y * bm.w + x) * 3
             bm.px[d:d + n * 3] = src.px[s:s + n * 3]
             x += n
+
+
+# ---------------------------------------------------------------------------
+# T5UID1*.CFG: 128-byte core configuration, read from the SD card only
+# (T5UID1 Application Guide ch. 5). Bytes 0x09-0x0A hold the UART2 baud
+# setting = CFG_BAUD_CLOCK / baud, at most 0x03E7.
+# ---------------------------------------------------------------------------
+CFG_MAGIC = b"T5D1"
+CFG_BAUD_OFF = 0x09
+CFG_BAUD_CLOCK = 7833600
+CFG_BAUD_MAX = 0x03e7
+
+
+def cfg_baud_value(baud, max_error=0.015):
+    """Setting for `baud`; FormatError if the screen can't get within
+    max_error of it."""
+    value = round(CFG_BAUD_CLOCK / baud)
+    if not 1 <= value <= CFG_BAUD_MAX:
+        raise FormatError("baud %d out of range" % baud)
+    actual = CFG_BAUD_CLOCK / value
+    if abs(actual - baud) / baud > max_error:
+        raise FormatError("baud %d not possible: nearest is %.0f (%+.1f%%)"
+                          % (baud, actual, (actual - baud) * 100 / baud))
+    return value
+
+
+def _check_cfg(data):
+    if len(data) < 0x80 or data[:4] != CFG_MAGIC:
+        raise FormatError("not a T5UID1 CFG file")
+
+
+def cfg_baud(data):
+    """Actual baud rate configured in a CFG file."""
+    _check_cfg(data)
+    value = struct.unpack_from(">H", data, CFG_BAUD_OFF)[0]
+    return CFG_BAUD_CLOCK / value
+
+
+def set_cfg_baud(data, baud):
+    """Copy of CFG `data` with the UART2 baud rate changed."""
+    _check_cfg(data)
+    out = bytearray(data)
+    struct.pack_into(">H", out, CFG_BAUD_OFF, cfg_baud_value(baud))
+    return bytes(out)
