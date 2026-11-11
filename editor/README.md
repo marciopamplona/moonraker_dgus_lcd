@@ -12,7 +12,8 @@ Work in progress; see [docs/EDITOR_PLAN.md](../docs/EDITOR_PLAN.md).
 cd editor
 npm install
 npm test            # vitest: golden round trips + Python cross-check
-npm run dev         # dev server
+npm run dev         # dev server on http://<pi-ip>:5173 (listens on the LAN)
+npm run preview     # serve the built dist/ on http://<pi-ip>:4173
 npm run build       # -> dist/index.html, one self-contained file (committed);
                     #    open it from disk or serve it from anywhere
 npm run fixtures    # regenerate test/fixtures from dgus_lcd/screen_files.py

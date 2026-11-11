@@ -32,4 +32,8 @@ export default defineConfig({
   base: "./",
   plugins: [preact(), singleFile()],
   build: { outDir: "dist", emptyOutDir: true, modulePreload: false },
+  // Listen on the LAN too: the editor usually runs on the Pi and is opened
+  // from another computer.
+  server: { host: true, port: 5173 },
+  preview: { host: true, port: 4173 },
 });
