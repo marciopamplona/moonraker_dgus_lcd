@@ -92,7 +92,8 @@ const TOUCH_FUNC: Record<number, FieldSpec[]> = {
     f("VP", 17, 2, "vp"), f("VP_Len_Max", 19, 1), f("Scan_Mode", 20, 1, "hex"), f("Lib_ID", 21, 1, "lib"),
     f("Font_X", 22, 1), f("Font_Y", 23, 1), f("Cursor_Color", 24, 1, "hex"), f("Color", 25, 2, "color"),
     gx("Text Xs", 27), gy("Text Ys", 29), gx("Text Xe", 33), gy("Text Ye", 35),
-    f("KB_Source", 37, 1, "hex"), f("PIC_KB", 38, 2, "page"),
+    f("KB_Source", 37, 1, "hex", "0 = current page, 1 = other page"), f("PIC_KB", 38, 2, "page"),
+    f("KB Xs", 40, 2), f("KB Ys", 42, 2), f("KB Xe", 44, 2), f("KB Ye", 46, 2), f("KB X", 49, 2), f("KB Y", 51, 2),
   ],
   0x09: [
     f("VP", 17, 2, "vp"), f("Data_Format", 19, 1, "hex"), gx("Xc", 20), gy("Yc", 22),

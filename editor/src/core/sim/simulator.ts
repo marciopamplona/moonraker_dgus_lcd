@@ -4,6 +4,7 @@
 // pages, filling VPs) is not simulated; the user edits VPs instead.
 import { fromHex } from "../bytes";
 import { describeTouch, describeVar, type ControlInfo } from "../controls/describe";
+import { readHead, type Rect } from "../formats/touch13";
 import type { HostRule, Page } from "../project/schema";
 import { hostTarget } from "./host";
 
@@ -20,6 +21,7 @@ export interface InputRequest {
   vp: number;
   /** number: decimals, limits and word count; text: max bytes. */
   nDot: number;
+  nInt: number;
   min: number | null;
   max: number | null;
   words: number;
@@ -30,6 +32,32 @@ export interface InputRequest {
 export interface PressResult {
   events: SimEvent[];
   input: InputRequest | null;
+}
+
+/** A popup menu or keypad pasted over the page (touch types 0x01, 0x00 and
+ * 0x06 with a keypad page): the `cut` area of page `menuPage`'s picture is
+ * shown at `pos`; that page's own touch keys (in its coordinates) work it. */
+export interface Overlay {
+  kind: "popup" | "number" | "text";
+  menuPage: number;
+  cut: Rect;
+  pos: [number, number];
+  vp: number;
+  /** popup: VP_Mode for the key code. */
+  mode: number;
+  /** number/text input: the request, what's typed so far, where it shows. */
+  req: InputRequest | null;
+  buffer: string;
+  cursor: [number, number];
+  color: number;
+  fontSize: number;
+}
+
+/** A press effect: the `src` area of page `page`'s picture shown at `dst`. */
+export interface Flash {
+  page: number;
+  src: Rect;
+  dst: [number, number];
 }
 
 export interface Drawn {
@@ -53,6 +81,104 @@ export class Simulator {
   /** Host page-switch rules, and the pages that exist. */
   rules: HostRule[] = [];
   pages: Set<number> | null = null;
+  pageMap = new Map<number, Page>();
+  overlay: Overlay | null = null;
+  flash: Flash | null = null;
+
+  /** Pages (with their touch keys) for popups, keypads and host rules. */
+  setProject(pages: Page[]): void {
+    this.pageMap = new Map(pages.map((p) => [p.id, p]));
+    this.pages = new Set(this.pageMap.keys());
+  }
+
+  /** The touch entry under (x, y) on `page`; later entries win, like the
+   * editor's drawing order. */
+  hit(page: number, x: number, y: number): Uint8Array | null {
+    const p = this.pageMap.get(page);
+    if (!p) return null;
+    for (let k = p.touch.length - 1; k >= 0; k--) {
+      const e = fromHex(p.touch[k]!.bytes);
+      const [xs, ys, xe, ye] = readHead(e).area;
+      if (x >= xs && x <= xe && y >= ys && y <= ye) return e;
+    }
+    return null;
+  }
+
+  private setFlash(e: Uint8Array, dst: [number, number]): void {
+    const h = readHead(e);
+    this.flash = h.picOn >> 8 === 0xff ? null : { page: h.picOn, src: h.area, dst };
+  }
+
+  /** A touch at screen (x, y): goes to the open popup/keypad, else to the
+   * page's touch area there. */
+  tap(x: number, y: number): PressResult {
+    this.flash = null;
+    if (this.overlay) return this.tapOverlay(x, y);
+    const e = this.hit(this.page, x, y);
+    if (!e) return { events: [], input: null };
+    this.setFlash(e, [readHead(e).area[0], readHead(e).area[1]]);
+    return this.press(e, x, y);
+  }
+
+  private tapOverlay(x: number, y: number): PressResult {
+    const o = this.overlay!;
+    const w = o.cut[2] - o.cut[0], h = o.cut[3] - o.cut[1];
+    if (x < o.pos[0] || y < o.pos[1] || x > o.pos[0] + w || y > o.pos[1] + h) {
+      return { events: [], input: null }; // modal: touches outside are ignored
+    }
+    const mx = x - o.pos[0] + o.cut[0], my = y - o.pos[1] + o.cut[1];
+    const key = this.hit(o.menuPage, mx, my);
+    if (!key) return { events: [], input: null };
+    const ka = readHead(key).area;
+    this.setFlash(key, [ka[0] - o.cut[0] + o.pos[0], ka[1] - o.cut[1] + o.pos[1]]);
+    const code = readHead(key).code;
+    const events: SimEvent[] = [];
+    if (o.kind === "popup") {
+      this.overlay = null;
+      if ((code & 0xff) === 0xff) {
+        events.push({ type: "info", text: "popup cancelled" });
+      } else {
+        const ev = this.writeMode(o.vp, o.mode, code & 0xff, "popup menu");
+        events.push(ev, ...this.host(ev));
+      }
+    } else {
+      events.push(...this.keypadKey(o, code));
+    }
+    this.log.push(...events.filter((x) => x.type !== "write"));
+    return { events, input: null };
+  }
+
+  private keypadKey(o: Overlay, code: number): SimEvent[] {
+    const c = code & 0xff;
+    const req = o.req!;
+    if (c === 0xf0) {
+      this.overlay = null;
+      return [{ type: "info", text: "input cancelled" }];
+    }
+    if (c === 0xf1 || c === 0x0d) {
+      this.overlay = null;
+      const err = this.enter(req, o.buffer);
+      return err ? [{ type: "info", text: `input rejected: ${err}` }] : [];
+    }
+    if (c === 0xf2) {
+      o.buffer = o.buffer.slice(0, -1);
+      return [];
+    }
+    const ch = String.fromCharCode(c);
+    if (o.kind === "text") {
+      if (c >= 0x20 && c < 0x7f && o.buffer.length < (req.maxBytes || 255)) o.buffer += ch;
+      return [];
+    }
+    if (ch === "-") {
+      o.buffer = o.buffer.startsWith("-") ? o.buffer.slice(1) : "-" + o.buffer;
+    } else if (ch === ".") {
+      if (req.nDot > 0 && !o.buffer.includes(".")) o.buffer += o.buffer.replace("-", "") ? "." : "0.";
+    } else if (ch >= "0" && ch <= "9") {
+      const [ip, fp] = o.buffer.replace("-", "").split(".");
+      if (fp !== undefined ? fp.length < req.nDot : ip!.length < req.nInt) o.buffer += ch;
+    }
+    return [];
+  }
 
   constructor(page: number, rules: HostRule[] = [], pages?: Iterable<number>) {
     this.page = page;
@@ -160,18 +286,41 @@ export class Simulator {
         const words = vType === 1 ? 2 : vType === 4 ? 4 : 1;
         const lim = field(i, "Limits_EN") === 0xff;
         input = {
-          kind: "number", vp, nDot: field(i, "N_Dot"), words, maxBytes: 0,
+          kind: "number", vp, nDot: field(i, "N_Dot"), nInt: field(i, "N_Int"), words, maxBytes: 0,
           min: lim ? field(i, "V_Min") : null, max: lim ? field(i, "V_Max") : null,
           keypadPage: field(i, "KB_Source") ? field(i, "PIC_KB") : null,
         };
+        if (this.openKeypad(i, input, [field(i, "Cursor X"), field(i, "Cursor Y")], field(i, "Color"), field(i, "Font_X") * 2)) {
+          input = null;
+          events.push({ type: "info", text: `keypad (page ${field(i, "PIC_KB")})` });
+        }
         break;
       }
       case 0x06:
         input = {
-          kind: "text", vp, nDot: 0, words: 0, maxBytes: field(i, "VP_Len_Max"), min: null, max: null,
+          kind: "text", vp, nDot: 0, nInt: 0, words: 0, maxBytes: field(i, "VP_Len_Max"), min: null, max: null,
           keypadPage: field(i, "KB_Source") ? field(i, "PIC_KB") : null,
         };
+        if (this.openKeypad(i, input, [field(i, "Text Xs"), field(i, "Text Ys")], field(i, "Color"), field(i, "Font_Y") || 16)) {
+          input = null;
+          events.push({ type: "info", text: `keyboard (page ${field(i, "PIC_KB")})` });
+        }
         break;
+      case 0x01: {
+        const menu = field(i, "Menu page");
+        if (this.pageMap.size && !this.pageMap.has(menu)) {
+          events.push({ type: "info", text: `popup: menu page ${menu} doesn't exist` });
+          break;
+        }
+        this.overlay = {
+          kind: "popup", menuPage: menu,
+          cut: [field(i, "Menu Xs"), field(i, "Menu Ys"), field(i, "Menu Xe"), field(i, "Menu Ye")],
+          pos: [field(i, "Menu X"), field(i, "Menu Y")], vp, mode: field(i, "VP_Mode"),
+          req: null, buffer: "", cursor: [0, 0], color: 0, fontSize: 0,
+        };
+        events.push({ type: "info", text: `popup menu (page ${menu})` });
+        break;
+      }
       default:
         events.push({ type: "info", text: `${i.typeName}: not simulated` });
     }
@@ -182,6 +331,24 @@ export class Simulator {
     events.push(...events.flatMap((ev) => this.host(ev)));
     this.log.push(...events.filter((x) => x.type !== "write"));
     return { events, input };
+  }
+
+  /** Show the keypad page for an input, if it has one we know. */
+  private openKeypad(i: ControlInfo, req: InputRequest, cursor: [number, number], color: number, fontSize: number): boolean {
+    if (req.keypadPage === null || !this.pageMap.has(req.keypadPage)) return false;
+    this.overlay = {
+      kind: req.kind, menuPage: req.keypadPage,
+      cut: [field(i, "KB Xs"), field(i, "KB Ys"), field(i, "KB Xe"), field(i, "KB Ye")],
+      pos: [field(i, "KB X"), field(i, "KB Y")], vp: req.vp, mode: 0,
+      req, buffer: "", cursor, color, fontSize: fontSize || 16,
+    };
+    return true;
+  }
+
+  /** Close an open popup / keypad without a result. */
+  closeOverlay(): void {
+    this.overlay = null;
+    this.flash = null;
   }
 
   /** Complete a data/text input request. Returns an error message or null. */

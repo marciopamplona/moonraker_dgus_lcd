@@ -177,6 +177,7 @@ export function redo(): void {
 
 export function goPage(id: number): void {
   state.sim.page = id;
+  state.sim.closeOverlay();
   setState({ pageId: id, selection: null });
 }
 
@@ -185,7 +186,9 @@ export function simChanged(): void {
 }
 
 function makeSim(doc: ProjectDoc | null, page: number): Simulator {
-  return doc ? new Simulator(page, hostRules(doc).rules, doc.project.pages.map((p) => p.id)) : new Simulator(page);
+  const sim = new Simulator(page, doc ? hostRules(doc).rules : []);
+  if (doc) sim.setProject(doc.project.pages);
+  return sim;
 }
 
 export function resetSim(): void {
@@ -197,7 +200,7 @@ export function syncSim(): Simulator {
   const { sim, doc } = state;
   if (doc) {
     sim.rules = hostRules(doc).rules;
-    sim.pages = new Set(doc.project.pages.map((p) => p.id));
+    sim.setProject(doc.project.pages);
   }
   return sim;
 }

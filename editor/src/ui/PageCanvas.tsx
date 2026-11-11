@@ -86,6 +86,34 @@ export function PageCanvas() {
           ctx.restore();
         }
       }
+      const pic = (id: number) => {
+        const pg = doc.project.pages.find((x) => x.id === id);
+        const a = pg?.background ? doc.assets.get(pg.background) : undefined;
+        return a ? pictureCanvas(a) : null;
+      };
+      const o = s.sim.overlay;
+      if (o) {
+        const src = pic(o.menuPage);
+        const cw = o.cut[2] - o.cut[0] + 1, ch = o.cut[3] - o.cut[1] + 1;
+        if (src) ctx.drawImage(src, o.cut[0], o.cut[1], cw, ch, o.pos[0], o.pos[1], cw, ch);
+        else {
+          ctx.fillStyle = "#333";
+          ctx.fillRect(o.pos[0], o.pos[1], cw, ch);
+        }
+      }
+      const f = s.sim.flash;
+      const fsrc = f && pic(f.page);
+      if (f && fsrc) {
+        const fw = f.src[2] - f.src[0] + 1, fh = f.src[3] - f.src[1] + 1;
+        ctx.drawImage(fsrc, f.src[0], f.src[1], fw, fh, f.dst[0], f.dst[1], fw, fh);
+      }
+      if (o && o.kind !== "popup") {
+        ctx.fillStyle = css565(o.color || 0xffff);
+        ctx.font = `${o.fontSize}px ui-monospace, monospace`;
+        ctx.textBaseline = "top";
+        ctx.textAlign = o.kind === "number" ? "right" : "left";
+        ctx.fillText(o.buffer + "_", o.cursor[0], o.cursor[1]);
+      }
     } else if (s.layers.icons) {
       for (const p of placed) {
         const ic = p.info.icon;
@@ -135,9 +163,18 @@ export function PageCanvas() {
     endGroup();
   };
 
-  const press = (e: MouseEvent, p: PlacedControl) => {
+  const tap = (e: MouseEvent) => {
     const [x, y] = toScreen(e);
-    const r = syncSim().press(p.bytes, x, y);
+    const r = syncSim().tap(Math.floor(x), Math.floor(y));
+    if (s.sim.flash) {
+      const f = s.sim.flash;
+      setTimeout(() => {
+        if (s.sim.flash === f) {
+          s.sim.flash = null;
+          simChanged();
+        }
+      }, 180);
+    }
     if (r.input) {
       const lim = r.input.min !== null ? ` (${r.input.min / 10 ** r.input.nDot} … ${(r.input.max ?? 0) / 10 ** r.input.nDot})` : "";
       const v = prompt(r.input.kind === "number" ? `Number for VP ${vpHex(r.input.vp)}${lim}` : `Text for VP ${vpHex(r.input.vp)}`);
@@ -150,7 +187,7 @@ export function PageCanvas() {
   };
 
   const box = (r: Rect) => ({ x: r[0], y: r[1], width: Math.max(1, r[2] - r[0] + 1), height: Math.max(1, r[3] - r[1] + 1) });
-  const shown = placed.filter((p) => p.info.bounds && (sim ? p.kind === "touch" : s.layers[p.kind]));
+  const shown = placed.filter((p) => p.info.bounds && (sim ? p.kind === "touch" && !s.sim.overlay : s.layers[p.kind]));
   const selected = placed.find((p) => p.control.uid === sel?.uid);
   const hs = 7 / s.zoom;
 
@@ -161,7 +198,8 @@ export function PageCanvas() {
         <svg
           ref={svg} viewBox={`0 0 ${w} ${h}`} class="overlay"
           onPointerMove={onMove} onPointerUp={endDrag} onPointerCancel={endDrag}
-          onPointerDown={(e) => e.target === e.currentTarget && setState({ selection: null })}
+          onPointerDown={(e) => !sim && e.target === e.currentTarget && setState({ selection: null })}
+          onClick={(e) => sim && tap(e)}
         >
           {shown.map((p) => {
             const isSel = sel?.uid === p.control.uid;
@@ -175,7 +213,6 @@ export function PageCanvas() {
                 onMouseEnter={() => setHover(p)}
                 onMouseLeave={() => setHover((x) => (x === p ? null : x))}
                 onPointerDown={(e) => startDrag(e, p, null)}
-                onClick={(e) => sim && press(e, p)}
                 onDblClick={() => {
                   const to = j?.page;
                   if (!sim && to !== undefined && doc.project.pages.some((pg) => pg.id === to)) goPage(to);
@@ -202,7 +239,9 @@ export function PageCanvas() {
         {hover
           ? `${hover.info.typeName} — VP ${vpHex(hover.info.vp)}${hover.info.estimated ? " (size estimated)" : ""}`
           : sim
-            ? "Simulating: click buttons; VP values are in the panel on the right"
+            ? s.sim.overlay
+              ? `${s.sim.overlay.kind === "popup" ? "Popup menu" : "Keypad"} open (page ${s.sim.overlay.menuPage}): click its keys; touches outside are ignored`
+              : "Simulating: click buttons; VP values are in the panel on the right"
             : "Drag to move, handles to resize, arrows to nudge (Shift ×10), Del to delete, Ctrl+D duplicate, Ctrl+Z undo"}
       </p>
     </section>

@@ -74,7 +74,15 @@ export function SimPanel() {
         Click buttons on the screen. Set VP values here to see what displays show; use the page
         list to switch pages by hand.
       </p>
-      <button class="small" onClick={resetSim}>Reset VPs</button>
+      <div class="row">
+        <button class="small" onClick={resetSim}>Reset VPs</button>
+        {s.sim.overlay && (
+          <button class="small" onClick={() => { s.sim.closeOverlay(); simChanged(); }}>Close {s.sim.overlay.kind === "popup" ? "popup" : "keypad"}</button>
+        )}
+      </div>
+      {s.sim.overlay && s.sim.overlay.kind !== "popup" && (
+        <p class="small">Typed: <span class="mono">{s.sim.overlay.buffer || "—"}</span></p>
+      )}
       <h4>VPs on this page</h4>
       <table class="fields">
         <tbody>

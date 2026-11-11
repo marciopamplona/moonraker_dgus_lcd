@@ -38,11 +38,22 @@ value is V". For DGUS-reloaded the rules (VPs 0x2000/0x2002/0x2003, see
 Editing them saves your own set in the project. Double-click in edit mode
 follows them too.
 
+### Popups and keypads
+
+Popup menus (touch 0x01) and number/text inputs with a keypad page work like
+on the screen: the menu's cut area is pasted over the page, its own touch
+keys (in the menu page's coordinates) answer, `0x00FF` cancels, any other
+key code is written to the VP; the pressed key flashes from its `Pic_On`
+picture. Keypads take digits, `.`, `-`, `0xF2` backspace, `0xF0` cancel and
+`0xF1` enter, and show what's typed at the input's cursor. Touches outside
+an open popup are ignored. Inputs without a keypad page fall back to a
+browser prompt.
+
 ### Simulator limits
 
 Apart from host rules it models the screen, not the printer service: VPs
-only change when you press controls or type values in the panel. Popup menus, RTC, text-scroll
-and graphics aren't simulated. Text is drawn with the browser's monospace
+only change when you press controls or type values in the panel. RTC,
+text-scroll and graphics aren't simulated. Text is drawn with the browser's monospace
 font, not the screen's HZK fonts.
 
 ```sh
@@ -63,7 +74,9 @@ The Pi has 1 GB shared with Klipper, and parallel test workers have frozen
 it. `npm run test:pi` (`scripts/test-pi.sh`) runs vitest with one worker in
 a `systemd-run --user` scope capped at 280 MB, so the kernel kills the tests
 rather than the board stalling. It refuses to start with less than 300 MB
-available (stop `npm run dev` first if needed).
+available (stop `npm run dev` first if needed). `tsc` 7 is a Go binary;
+run it with `GOMEMLIMIT=150MiB` (as the script does) or it grows into the
+cap and thrashes.
 
 ## Where files go
 

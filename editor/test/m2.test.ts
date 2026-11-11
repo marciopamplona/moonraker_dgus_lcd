@@ -206,7 +206,7 @@ describe("simulator", () => {
     addControl(doc, 0, "display", textVar(0x2000, 0, 50, [0, 50, 99, 69], 10));
     addControl(doc, 0, "display", TEMPLATES.find((t) => t.id === "bit-icon")!.make(0, 5, 5, 0x3000));
     sim.write(0x1000, 1, -123, "test");
-    sim.enter({ kind: "text", vp: 0x2000, nDot: 0, words: 0, maxBytes: 10, min: null, max: null, keypadPage: null }, "Hi!");
+    sim.enter({ kind: "text", vp: 0x2000, nDot: 0, nInt: 0, words: 0, maxBytes: 10, min: null, max: null, keypadPage: null }, "Hi!");
     sim.set(0x3000, 1);
     const d = sim.render(getPage(doc, 0));
     expect(d[0]).toMatchObject({ kind: "text", text: "-12.3" });

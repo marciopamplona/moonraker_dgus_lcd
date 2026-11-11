@@ -16,5 +16,8 @@ if [ "$avail" -lt 300 ]; then
   exit 1
 fi
 exec systemd-run --user --scope -q -p MemoryMax="$MEM" -p MemorySwapMax=0 \
-  nice -n 10 env NODE_OPTIONS="--max-old-space-size=160" \
+  nice -n 10 env NODE_OPTIONS="--max-old-space-size=160" GOMEMLIMIT=150MiB \
   npx vitest run --maxWorkers=1 --no-file-parallelism "$@"
+# Typecheck the same way (tsc 7 is a Go binary: GOMEMLIMIT keeps it small):
+#   systemd-run --user --scope -q -p MemoryMax=300M -p MemorySwapMax=0 \
+#     env GOMEMLIMIT=150MiB npx tsc --noEmit

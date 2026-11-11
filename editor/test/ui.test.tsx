@@ -5,7 +5,7 @@ import "fake-indexeddb/auto";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { blankProject, decompile, describeTouch, describeVar, fromHex, hex, readHead, returnKey, writeHead } from "../src/core";
+import { type ProjectDoc, blankProject, decompile, describeTouch, describeVar, fromHex, hex, readHead, returnKey, writeHead } from "../src/core";
 import { findControl } from "../src/core/project/ops";
 import { pickDwinSet } from "../src/io/dwinset";
 import * as idb from "../src/io/idb";
@@ -14,6 +14,12 @@ import { flushSave, getState, openDoc, setState } from "../src/ui/store";
 import { VENDOR_SET, list, read } from "./util";
 
 let root: HTMLDivElement;
+
+// Decompile the vendored set once: it is ~20 MB, and the Pi is tight on RAM.
+// Tests never mutate it (edits work on copies).
+let vendorDoc: ProjectDoc | null = null;
+const vendor = () =>
+  (vendorDoc ??= decompile(pickDwinSet(list(VENDOR_SET).map((n) => [n, read(VENDOR_SET, n)])), "Vendor").doc);
 
 beforeEach(async () => {
   // a 480x272 screen at 1:1, so pointer coordinates are screen pixels
@@ -37,6 +43,12 @@ const pointer = (el: Element | null | undefined, type: string, x: number, y: num
   fire(el, new PointerEvent(type, { bubbles: true, clientX: x, clientY: y, button: 0, pointerId: 1 }));
 const key = (k: string, opts: KeyboardEventInit = {}) =>
   act(() => void window.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true, ...opts })));
+/** Simulator tap at the centre of an overlay rect (taps use coordinates). */
+const tapRect = (r: Element | null | undefined) => {
+  const x = Number(r!.getAttribute("x")) + Number(r!.getAttribute("width")) / 2;
+  const y = Number(r!.getAttribute("y")) + Number(r!.getAttribute("height")) / 2;
+  return fire(r, new MouseEvent("click", { bubbles: true, clientX: x, clientY: y }));
+};
 const buttonByText = (text: string) => [...root.querySelectorAll("button")].find((b) => b.textContent?.trim() === text);
 const change = (el: HTMLInputElement | HTMLSelectElement, value: string) =>
   act(() => {
@@ -51,8 +63,8 @@ describe("UI", () => {
     await act(() => new Promise((r) => setTimeout(r, 0)));
     expect(root.querySelectorAll(".pages li").length).toBe(1);
 
-    const { doc } = decompile(pickDwinSet(list(VENDOR_SET).map((n) => [n, read(VENDOR_SET, n)])), "Vendor");
-    await act(() => openDoc(doc));
+    const doc = vendor();
+    await act(() => openDoc(doc, [], false));
     expect(root.querySelectorAll(".pages li").length).toBe(doc.project.pages.length);
 
     await click([...root.querySelectorAll(".page")].find((b) => b.textContent?.includes("home")));
@@ -66,14 +78,18 @@ describe("UI", () => {
     expect(root.querySelector(".inspector table.fields")).not.toBeNull();
     expect(root.querySelector(".inspector pre.hex")?.textContent).toMatch(/^00 {2}/);
 
+    await click(root.querySelector<HTMLInputElement>(".layer.touch input"));
+    expect(root.querySelectorAll("rect.ctl.touch").length).toBe(0);
+
+    // autosave, on a small project (keeps fake IndexedDB small)
+    const small = blankProject("Small");
+    await act(() => openDoc(small));
     const title = root.querySelector<HTMLInputElement>(".toolbar .title")!;
     await change(title, "Renamed");
     await flushSave();
     expect(getState().save).toBe("saved");
-    expect((await idb.listProjects()).find((p) => p.id === doc.project.id)?.name).toBe("Renamed");
+    expect((await idb.listProjects()).find((p) => p.id === small.project.id)?.name).toBe("Renamed");
 
-    await click(root.querySelector<HTMLInputElement>(".layer.touch input"));
-    expect(root.querySelectorAll("rect.ctl.touch").length).toBe(0);
   });
 
   it("double-clicking a Pic_Next button follows the jump", async () => {
@@ -176,7 +192,7 @@ describe("UI", () => {
 
     await click(buttonByText("▶ Simulate"));
     expect(getState().mode).toBe("simulate");
-    await click(root.querySelector("rect.ctl.sim"));
+    await tapRect(root.querySelector("rect.ctl.sim"));
     expect(getState().sim.get(0x1000)).toBe(1);
     expect(root.textContent).toContain("write 0x1000 = 1");
     const page = getState().doc!.project.pages[0]!;
@@ -186,14 +202,13 @@ describe("UI", () => {
   });
 
   it("simulator follows DGUS-reloaded host page switches (home -> settings)", async () => {
-    const { doc } = decompile(pickDwinSet(list(VENDOR_SET).map((n) => [n, read(VENDOR_SET, n)])), "Vendor");
-    await act(() => openDoc(doc, [], false));
+    await act(() => openDoc(vendor(), [], false));
     await click([...root.querySelectorAll(".page")].find((b) => b.textContent?.includes("home")));
     await click(buttonByText("▶ Simulate"));
     const settings = [...root.querySelectorAll("rect.ctl.sim")]
       .find((r) => /VP 0x2000 {2}→ page 9 \(host\)/.test(r.querySelector("title")!.textContent!));
     expect(settings).toBeDefined();
-    await click(settings);
+    await tapRect(settings);
     expect(getState().pageId).toBe(9);
     expect(root.textContent).toContain("→ page 9 (host)");
     expect(root.textContent).toContain("Detected DGUS-reloaded");
@@ -204,5 +219,22 @@ describe("UI", () => {
       .find((r) => r.querySelector("title")!.textContent!.includes("→ page 9 (host)"))!;
     await fire(again, new MouseEvent("dblclick", { bubbles: true }));
     expect(getState().pageId).toBe(9);
+  });
+
+  it("simulator: presets popup opens over the page and returns the chosen item", async () => {
+    await act(() => openDoc(vendor(), [], false));
+    await click([...root.querySelectorAll(".page")].find((b) => b.textContent?.includes("temp_menu")));
+    await click(buttonByText("▶ Simulate"));
+    const svg = root.querySelector("svg.overlay")!;
+    const tapAt = (x: number, y: number) => fire(svg, new MouseEvent("click", { bubbles: true, clientX: x, clientY: y }));
+    await tapAt(60, 130); // presets button (15,79)-(117,181)
+    expect(getState().sim.overlay?.menuPage).toBe(210);
+    expect(root.textContent).toContain("Popup menu open (page 210)");
+    expect(root.querySelectorAll("rect.ctl.sim").length).toBe(0);
+    // item 2 on page 210 is at (209..270, 155..191); pasted with cut (129,99) at (129,84)
+    await tapAt(240 - 129 + 129, 170 - 99 + 84);
+    expect(getState().sim.overlay).toBeNull();
+    expect(getState().sim.get(0x2010)).toBe(2);
+    expect(root.textContent).toContain("write 0x2010 = 2");
   });
 });
