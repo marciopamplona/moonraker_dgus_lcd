@@ -119,4 +119,13 @@ before typed editing (M2) exists.
 
 **ICO**: 0x40000-byte index of 32768 × 8-byte entries, where entry *n* = icon id *n*: `w(1) h(1) addr(4, BE, in 16-bit words from the start of the file) 0000`. An all-zero entry means no icon. After the index comes RGB565 big-endian pixel data (channel truncation, no dithering). The DWIN tool writes the data in *string* order of the source file names (`0, 1, 10, 11, …, 2`). Building from `vendor/…/project/27_buttons/*.bmp` in that order reproduces `27_buttons.ico` byte for byte. Icons are at most 255×255.
 
+**Data variable (0x10) alignment**: the manuals disagree. The V4.3 guide
+says ALI 0 = right, 1 = left. The T5L DGUS II guide 2.921 and the 2016
+screen guide say **0 = left, 1 = right, 2 = centred**, with (X, Y) the
+upper-left corner of the field for every alignment. The field is
+(integer digits + point + decimals + unit) × Font_X wide and 2 × Font_X
+high. DGUS-reloaded's home page confirms the T5L/2016 reading: its
+temperature fields only fit between the printed "/" and "°C" that way
+(`test/datavar.test.ts`).
+
 **ASCII HZK**: for every even height h = 8…128 (w = h/2), 128 glyphs (0x00–0x7F) of `ceil(w/8)·h` bytes each, 1 bpp, MSB = leftmost pixel. 61 sizes add up to exactly 3 082 752 bytes, the size of the file.

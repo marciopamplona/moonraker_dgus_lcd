@@ -3,7 +3,7 @@
 // variables would show. Host behaviour (the printer service switching
 // pages, filling VPs) is not simulated; the user edits VPs instead.
 import { fromHex } from "../bytes";
-import { describeTouch, describeVar, type ControlInfo } from "../controls/describe";
+import { dataFieldWidth, dataUnit, describeTouch, describeVar, type ControlInfo } from "../controls/describe";
 import { readHead, type Rect } from "../formats/touch13";
 import type { HostRule, Page } from "../project/schema";
 import { hostTarget } from "./host";
@@ -67,7 +67,10 @@ export interface Drawn {
   y: number;
   text?: string;
   color?: number;
+  /** Font height; `charW` is the width of one character (DWIN fonts are
+   * fixed-width ASCII, half as wide as high). */
   size?: number;
+  charW?: number;
   align?: "left" | "right" | "center";
   box?: [number, number, number, number];
   icon?: { lib: number; id: number; transparent: boolean };
@@ -375,7 +378,8 @@ export class Simulator {
   render(page: Page): Drawn[] {
     const out: Drawn[] = [];
     for (const c of page.display) {
-      const i = describeVar(fromHex(c.bytes));
+      const raw = fromHex(c.bytes);
+      const i = describeVar(raw);
       const g = (n: string) => field(i, n);
       const vp = i.vp ?? 0;
       switch (i.type) {
@@ -391,11 +395,15 @@ export class Simulator {
             const cut = ip!.slice(-intN);
             text = (v < 0 ? "-" : "") + cut + (fp !== undefined ? "." + fp : "");
           }
+          // ALI: 0 left, 1 right, 2 centred inside the field at (X, Y)
           const fx = g("Font_X") || 8;
           const ali = g("ALI");
+          const w = dataFieldWidth(raw);
+          const x = ali === 1 ? g("X") + w : ali === 2 ? g("X") + w / 2 : g("X");
           out.push({
-            uid: c.uid, kind: "text", x: g("X"), y: g("Y"), text, color: g("Color"), size: fx * 2,
-            align: ali === 0 ? "right" : ali === 2 ? "center" : "left",
+            uid: c.uid, kind: "text", x, y: g("Y"), text: text + dataUnit(raw), color: g("Color"),
+            size: fx * 2, charW: fx, align: ali === 1 ? "right" : ali === 2 ? "center" : "left",
+            box: [g("X"), g("Y"), g("X") + w - 1, g("Y") + fx * 2 - 1],
           });
           break;
         }
@@ -414,7 +422,7 @@ export class Simulator {
             : String.fromCharCode(...bytes.slice(0, end));
           out.push({
             uid: c.uid, kind: "text", x: g("X"), y: g("Y"), text, color: g("Color"), size: g("Font_Y") || 16,
-            align: "left", box: [g("Xs"), g("Ys"), g("Xe"), g("Ye")],
+            charW: g("Font_X") || undefined, align: "left", box: [g("Xs"), g("Ys"), g("Xe"), g("Ye")],
           });
           break;
         }

@@ -41,6 +41,25 @@ function handlePos(b: Rect, h: Handle): [number, number] {
 
 const css565 = (v: number) => `rgb(${from565(v).join(",")})`;
 
+/** Fixed-width text like the screen's ASCII fonts: `size` high, each
+ * character `charW` wide (the browser font is squeezed to fit). */
+function drawText(
+  ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number,
+  charW: number | undefined, color: number, align: CanvasTextAlign,
+): void {
+  ctx.save();
+  ctx.fillStyle = css565(color);
+  ctx.font = `${size}px ui-monospace, monospace`;
+  ctx.textBaseline = "top";
+  ctx.textAlign = align;
+  const natural = ctx.measureText("0").width || size / 2;
+  const sx = charW ? charW / natural : 1;
+  ctx.translate(x, y);
+  ctx.scale(sx, 1);
+  ctx.fillText(text, 0, 0);
+  ctx.restore();
+}
+
 export function PageCanvas() {
   const s = useStore();
   const doc = s.doc!;
@@ -78,11 +97,7 @@ export function PageCanvas() {
             ctx.rect(d.box[0], d.box[1], d.box[2] - d.box[0] + 1, d.box[3] - d.box[1] + 1);
             ctx.clip();
           }
-          ctx.fillStyle = css565(d.color ?? 0xffff);
-          ctx.font = `${d.size ?? 16}px ui-monospace, monospace`;
-          ctx.textBaseline = "top";
-          ctx.textAlign = d.align ?? "left";
-          ctx.fillText(d.text, d.x, d.y);
+          drawText(ctx, d.text, d.x, d.y, d.size ?? 16, d.charW, d.color ?? 0xffff, d.align ?? "left");
           ctx.restore();
         }
       }
@@ -108,11 +123,8 @@ export function PageCanvas() {
         ctx.drawImage(fsrc, f.src[0], f.src[1], fw, fh, f.dst[0], f.dst[1], fw, fh);
       }
       if (o && o.kind !== "popup") {
-        ctx.fillStyle = css565(o.color || 0xffff);
-        ctx.font = `${o.fontSize}px ui-monospace, monospace`;
-        ctx.textBaseline = "top";
-        ctx.textAlign = o.kind === "number" ? "right" : "left";
-        ctx.fillText(o.buffer + "_", o.cursor[0], o.cursor[1]);
+        drawText(ctx, o.buffer + "_", o.cursor[0], o.cursor[1], o.fontSize, o.fontSize / 2, o.color || 0xffff,
+          o.kind === "number" ? "right" : "left");
       }
     } else if (s.layers.icons) {
       for (const p of placed) {

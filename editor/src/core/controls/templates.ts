@@ -92,7 +92,7 @@ export const TEMPLATES: Template[] = [
       put16(e, 12, 0xffff); // white
       e[14] = 0; // font 0
       e[15] = 12; // font width
-      e[16] = 0x01; // left aligned
+      e[16] = 0x00; // left aligned (0 left, 1 right, 2 centred)
       e[17] = 5; // integer digits
       e[18] = 0; // decimals
       e[19] = 0x00; // int16

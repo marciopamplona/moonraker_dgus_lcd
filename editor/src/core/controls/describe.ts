@@ -126,7 +126,7 @@ const VAR_FIELDS: Record<number, FieldSpec[]> = {
     f("ICON0S", 16, 2, "icon"), f("ICON0E", 18, 2, "icon"), f("ICON1S", 20, 2, "icon"), f("ICON1E", 22, 2, "icon"),
     gx("X", 24), gy("Y", 26), f("DIS_MOV", 28, 2)],
   0x10: [VP, ...XY, f("Color", 12, 2, "color"), f("Lib_ID", 14, 1, "lib"), f("Font_X", 15, 1),
-    f("ALI", 16, 1, "hex", "0 right, 1 left, 2 centre"), f("Int_Num", 17, 1), f("Dec_Num", 18, 1),
+    f("ALI", 16, 1, "hex", "0 left, 1 right, 2 centred, within the field starting at (X, Y)"), f("Int_Num", 17, 1), f("Dec_Num", 18, 1),
     f("VP_Data_Mode", 19, 1, "hex", "0 int16, 1 int32, 2 high byte, 3 low byte, 4 int64, 5 uint16, 6 uint32"),
     f("Len_unit", 20, 1)],
   0x11: [VP, ...XY, f("Color", 12, 2, "color"), ...BOX(14),
@@ -154,6 +154,20 @@ function decode(e: Uint8Array, specs: FieldSpec[]): Field[] {
 }
 
 const get = (fields: Field[], name: string) => fields.find((x) => x.name === name)?.value ?? 0;
+
+/** Width in pixels of a data variable's (0x10) field: integer digits,
+ * decimal point and decimals, and the unit string, Font_X each. */
+export function dataFieldWidth(e: Uint8Array): number {
+  const fx = u8(e, 15) || 8;
+  const ni = u8(e, 17), nd = u8(e, 18), unit = Math.min(u8(e, 20), 11);
+  return fx * (Math.max(1, ni + nd + (nd ? 1 : 0)) + unit);
+}
+
+/** A data variable's unit string (up to 11 ASCII characters). */
+export function dataUnit(e: Uint8Array): string {
+  const n = Math.min(u8(e, 20), 11);
+  return String.fromCharCode(...e.subarray(21, 21 + n));
+}
 
 export function describeTouch(e: Uint8Array): ControlInfo {
   const h = readHead(e);
@@ -206,11 +220,11 @@ export function describeVar(e: Uint8Array, iconSize?: (lib: number, id: number) 
       break;
     }
     case 0x10: {
+      // (X, Y) is the upper-left of the field for every alignment (T5L
+      // DGUS II guide 2.921 and the 2016 guide; V4.3 has ALI 0/1 swapped).
       const fx = g("Font_X") || 8;
-      const n = g("Int_Num") + g("Dec_Num") + (g("Dec_Num") ? 1 : 0) + 1;
-      const w = (fx * n);
-      const x = g("ALI") === 0 ? g("X") - w + 1 : g("ALI") === 2 ? g("X") - (w >> 1) : g("X");
-      bounds = [Math.max(0, x), g("Y"), Math.max(0, x) + w - 1, g("Y") + fx * 2 - 1];
+      bounds = [g("X"), g("Y"), g("X") + dataFieldWidth(e) - 1, g("Y") + fx * 2 - 1];
+      estimated = false;
       break;
     }
     case 0x11: case 0x14: bounds = [g("Xs"), g("Ys"), g("Xe"), g("Ye")]; estimated = false; break;
