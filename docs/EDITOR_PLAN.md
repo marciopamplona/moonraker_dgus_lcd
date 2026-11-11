@@ -113,7 +113,7 @@ renders it.
 ## Milestones
 - **Step 0 – commit the plan.** Copy this plan to `docs/EDITOR_PLAN.md` on a new
   branch `feat/web-editor` and commit it before any code is written.
-- **M0 – scaffold + codecs.** Vite/TS/vitest setup. Port touch13, var14, bmp and cfg
+- **M0 – scaffold + codecs.** ✅ Done (see editor/README.md for the format findings). Vite/TS/vitest setup. Port touch13, var14, bmp and cfg
   from `screen_files.py`. Reverse-engineer ico, hzk and config22. Golden tests:
   parse→build is byte-identical for every file in the vendored DWIN_SET. A Python
   script (`editor/test/gen_fixtures.py`) emits JSON from `screen_files.py` to

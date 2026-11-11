@@ -5,6 +5,8 @@ __pycache__/
 # build/ also holds python -m dgus_lcd.macros_screen output
 build/
 dist/
+# the editor ships its built bundle so the Pi needs no Node
+!editor/dist/
 .pytest_cache/
 
 # Virtual environments (the service uses ~/dgus-env, outside this folder)
