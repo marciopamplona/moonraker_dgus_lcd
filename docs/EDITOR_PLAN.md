@@ -127,10 +127,12 @@ renders it.
   simulator.
 - **M3 – bitmap editor.** ✅ Done. Layers, shapes, TTF text, image import with resize, a
   pressed-state variant, RGB565 preview.
-- **M4 – icons, fonts, config.** Icon library editor + ICO encoder, TTF→HZK
+- **M4 – icons, fonts, config.** ✅ Done, except the DGUS-reloaded template (~20 MB, too big
+  for the single-file page): moved to M5, served by the bridge. Icon library editor + ICO encoder, TTF→HZK
   generator, CFG form, 22_config table. Templates: blank and DGUS-reloaded.
 - **M5 – bridge.** `editor_bridge.py`, flash with progress, live page/VP preview,
-  project storage on the Pi, docs (`docs/EDITOR.md`, README section).
+  project storage on the Pi, the DGUS-reloaded template (served from vendor/),
+  docs (`docs/EDITOR.md`, README section).
 - **Later:** T5L profile, importing the Windows `DWprj.hmi` (INI-style; maps page
   names), collaborative/hosted builds.
 

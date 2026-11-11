@@ -177,3 +177,34 @@ textarea.raw { width: 100%; background: var(--bg); border: 1px solid var(--line)
 .guide.touch { stroke: var(--touch); }
 .guide.display { stroke: var(--display); }
 .layer-box { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 3; vector-effect: non-scaling-stroke; pointer-events: none; }
+
+/* --- M4 files --- */
+.files li { padding: 0; }
+.file { display: flex; gap: 6px; align-items: center; width: 100%; text-align: left; border: 1px solid transparent; background: none; padding: 2px 4px; }
+.file.active { border-color: var(--accent); background: var(--hover); }
+.add-file { padding: 1px 4px; border-radius: 4px; }
+.fileview { align-items: stretch; background: var(--bg); }
+.fileview h2 { margin: 0 0 8px; font-size: 18px; }
+.icon-grid { list-style: none; padding: 0; margin: 8px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.icon-cell { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; }
+.icon-cell.active { border-color: var(--accent); background: var(--hover); }
+.checker { display: flex; align-items: center; justify-content: center; min-width: 76px; min-height: 76px; border-radius: 4px;
+  background: repeating-conic-gradient(#8884 0% 25%, transparent 0% 50%) 50% / 12px 12px; }
+.checker.big { min-width: 0; min-height: 0; padding: 8px; display: inline-flex; }
+.icon-thumb { image-rendering: pixelated; }
+.used { color: var(--good); }
+.icon-detail { border-top: 1px solid var(--line); padding-top: 8px; }
+.rename { display: grid; grid-template-columns: 4em 1fr auto; gap: 4px; }
+.rename input { padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); min-width: 0; }
+.sample, .glyph-grid, .glyph-big, .gen-preview { image-rendering: pixelated; display: block; margin: 6px 0; max-width: 100%; }
+.sample { zoom: 2; }
+.glyph-grid { cursor: pointer; }
+.glyph-big { cursor: crosshair; touch-action: none; }
+.glyph-edit { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin: 8px 0; }
+.generator { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 8px; max-width: 720px; }
+.gen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 16px; }
+.cfg { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.cfg fieldset { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.cfg legend { font-weight: 600; padding: 0 4px; }
+.sram-form { grid-template-columns: 8em 1fr auto auto; max-width: 640px; }
+.sram td { vertical-align: top; }

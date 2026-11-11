@@ -35,6 +35,8 @@ export interface State {
   brush: { color: string; width: number };
   /** Show page pictures as the screen will (RGB565). */
   preview565: boolean;
+  /** A project file open in the main area instead of a page. */
+  file: string | null;
   panel: "inspect" | "vps";
   sim: Simulator;
   /** Bumped when the simulator's state changes. */
@@ -46,7 +48,7 @@ let state: State = {
   save: idb.available() ? "idle" : "off", saveError: "",
   layers: { touch: true, display: true, icons: true }, zoom: 2,
   past: [], future: [], mode: "edit", panel: "inspect", sim: new Simulator(0), simTick: 0,
-  layerId: null, tool: "select", brush: { color: "#ffffff", width: 6 }, preview565: false,
+  layerId: null, tool: "select", brush: { color: "#ffffff", width: 6 }, preview565: false, file: null,
 };
 const subs = new Set<() => void>();
 
@@ -101,7 +103,7 @@ export async function flushSave(): Promise<void> {
 export function openDoc(doc: ProjectDoc, warnings: string[] = [], persist = true): void {
   const pageId = doc.project.pages[0]?.id ?? null;
   setState({
-    doc, warnings, selection: null, pageId, past: [], future: [], mode: "edit", layerId: null, tool: "select",
+    doc, warnings, selection: null, pageId, past: [], future: [], mode: "edit", layerId: null, tool: "select", file: null,
     sim: makeSim(doc, pageId ?? 0), simTick: 0,
   });
   // decode layer images and register uploaded fonts, then redraw
@@ -163,6 +165,7 @@ function fixView(doc: ProjectDoc): Partial<State> {
   const out: Partial<State> = {};
   if (!doc.project.pages.some((p) => p.id === state.pageId)) out.pageId = doc.project.pages[0]?.id ?? null;
   if (state.selection && !findControl(doc, state.selection.uid)) out.selection = null;
+  if (state.file && !doc.project.files.some((f) => f.name === state.file)) out.file = null;
   return out;
 }
 
@@ -190,7 +193,11 @@ export function redo(): void {
 export function goPage(id: number): void {
   state.sim.page = id;
   state.sim.closeOverlay();
-  setState({ pageId: id, selection: null, layerId: null });
+  setState({ pageId: id, selection: null, layerId: null, file: null });
+}
+
+export function openFile(name: string | null): void {
+  setState({ file: name, selection: null, layerId: null, ...(name && state.mode !== "edit" ? { mode: "edit" } : {}) });
 }
 
 export function simChanged(): void {

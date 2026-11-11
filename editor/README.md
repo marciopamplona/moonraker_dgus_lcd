@@ -34,6 +34,29 @@ Work in progress; see [docs/EDITOR_PLAN.md](../docs/EDITOR_PLAN.md).
   the same pixels (tested), so only pages you edit change. Layer sources
   live in the project as `art/` assets and are never exported to DWIN_SET.
 
+- **M4** (done): files. Click any file in the sidebar to open it:
+  - **Icon libraries** (.ico): grid with ids, sizes and how often each icon
+    is used; add images (ids from file names like `12.png`, fitted to
+    ≤255 px, transparency → black with real black nudged to 0x0020 so it
+    stays visible), replace, change id, download, delete; new libraries
+    from **+ File**.
+  - **Fonts**: ASCII libraries (the `0_DWIN_ASC.HZK` layout, heights
+    8–128) with a glyph browser, sample text, a pixel editor, and
+    **Generate from a font**, which draws printable ASCII from a TTF/OTF/WOFF
+    at chosen heights (size, offset, threshold, bold, live preview). Other
+    encodings (8-bit, GBK, Unicode from DWIN's font tool) have an
+    undocumented layout and are kept as they are.
+  - **T5UID1.CFG** as a form (baud with the real rate, rotation, boot page,
+    backlight dimming, touch sound/buzzer, boot sound, 22.BIN loading…);
+    unmodelled bytes are kept.
+  - **22_config.bin**: initial VP values as words or text, with the controls
+    that read them, and a warning if the CFG doesn't load the file.
+  - Sounds play in the browser; other files show a hex preview.
+  - Every file: rename (changing an icon library's or font's id updates
+    the controls that use it), download, replace, delete; **+ File → Add
+    files from disk**. The sidebar warns when files overlap in the
+    screen's flash (font ids are 256 KB each; WAVs share the upper 32 MB).
+
 ### Keyboard
 
 | Key | |

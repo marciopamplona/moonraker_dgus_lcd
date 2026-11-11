@@ -60,8 +60,8 @@ export function packGlyph(g: Glyph, out: Uint8Array, off: number): void {
 export class AsciiFontLib {
   data: Uint8Array;
 
-  constructor(data?: Uint8Array) {
-    this.data = data ? data.slice() : new Uint8Array(ASCII_LIB_SIZE);
+  constructor(data?: Uint8Array, copy = true) {
+    this.data = data ? (copy ? data.slice() : data) : new Uint8Array(ASCII_LIB_SIZE);
     if (this.data.length !== ASCII_LIB_SIZE) {
       throw new FormatError(`ASCII font library must be ${ASCII_LIB_SIZE} bytes`);
     }
@@ -69,6 +69,11 @@ export class AsciiFontLib {
 
   static parse(data: Uint8Array): AsciiFontLib {
     return new AsciiFontLib(data);
+  }
+
+  /** Read-only access without copying (don't call setGlyph on it). */
+  static view(data: Uint8Array): AsciiFontLib {
+    return new AsciiFontLib(data, false);
   }
 
   build(): Uint8Array {

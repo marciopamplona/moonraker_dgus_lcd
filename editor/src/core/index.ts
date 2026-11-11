@@ -24,3 +24,6 @@ export * from "./art/schema";
 export * from "./art/render";
 export * from "./art/dither";
 export * from "./art/ops";
+export * from "./files/nand";
+export * from "./files/ops";
+export * from "./fonts/raster";

@@ -2,6 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import { importDropped } from "./actions";
 import { onKey } from "./commands";
 import { Panel } from "./Panel";
+import { FilePanel, FileView } from "./FileView";
 import { PageCanvas } from "./PageCanvas";
 import { Sidebar } from "./Sidebar";
 import { Toolbar } from "./Toolbar";
@@ -43,8 +44,8 @@ export function App() {
         <div class="app">
           <Toolbar />
           <Sidebar />
-          <PageCanvas />
-          <Panel />
+          {s.file ? <FileView /> : <PageCanvas />}
+          {s.file ? <FilePanel /> : <Panel />}
         </div>
       ) : (
         <Welcome />

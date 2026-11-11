@@ -14,6 +14,11 @@ let makeCanvas: CanvasFactory = (w, h) => {
   return c as unknown as ReturnType<Env["canvas"]>;
 };
 
+/** The current canvas factory (for font rasterising too). */
+export function canvasFactory(): CanvasFactory {
+  return makeCanvas;
+}
+
 /** Tests swap in a Node canvas (happy-dom has none). */
 export function setCanvasFactory(f: CanvasFactory): void {
   makeCanvas = f;
