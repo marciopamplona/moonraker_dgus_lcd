@@ -122,7 +122,7 @@ renders it.
   Project, browse pages with control overlays, save/load `.dgusproj`, export a
   DWIN_SET zip. Done when import→export of DGUS-reloaded (and our Macros-patched
   set) is byte-identical.
-- **M2 – controls editor.** Canvas placement/resizing, Inspector, VP table +
+- **M2 – controls editor.** ✅ Done. Canvas placement/resizing, Inspector, VP table +
   conflict checks, undo/redo, page add/remove/reorder (renumbers references),
   simulator.
 - **M3 – bitmap editor.** Layers, shapes, TTF text, image import with resize, a

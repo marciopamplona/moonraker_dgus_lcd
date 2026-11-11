@@ -7,6 +7,32 @@ Work in progress; see [docs/EDITOR_PLAN.md](../docs/EDITOR_PLAN.md).
   pages with their controls drawn on top, inspect each control's fields,
   save/open `.dgusproj`, export a DWIN_SET zip, autosave to IndexedDB.
   Import → export is byte-identical for the vendored and Macros sets.
+- **M2** (done): editing. Add controls from templates (button/page jump,
+  return key, number input, +/-, slider, text, number, variable icon, bit
+  icon) with a free VP picked automatically; drag to move, handles to
+  resize, arrow keys to nudge; edit every field in the inspector (page
+  pickers, colour picker, hex or decimal) or the raw bytes; duplicate,
+  reorder, delete; undo/redo. Pages: add, rename, duplicate, delete,
+  renumber (updates every reference: Pic_Next, Pic_On, keypad and popup
+  pages, CFG boot page), replace the picture with any image. VP table with
+  overlap checks. Simulator: click through pages, VPs editable, event log.
+
+### Keyboard
+
+| Key | |
+|---|---|
+| Arrows / Shift+arrows | move the selected control 1 / 10 px |
+| Delete, Backspace | delete it |
+| Ctrl+D | duplicate it |
+| Ctrl+Z, Ctrl+Shift+Z / Ctrl+Y | undo, redo |
+| Esc | deselect |
+
+### Simulator limits
+
+It models the screen, not the printer service: VPs only change when you
+press controls or type values in the panel. Popup menus, RTC, text-scroll
+and graphics aren't simulated. Text is drawn with the browser's monospace
+font, not the screen's HZK fonts.
 
 ```sh
 cd editor
@@ -37,7 +63,10 @@ before typed editing (M2) exists.
 | Path | |
 |---|---|
 | `src/core/formats/` | file codecs (no DOM) |
-| `src/core/controls/describe.ts` | field tables for every touch/display control type (V4.3 guide ch. 7–8), bounds for the canvas |
+| `src/core/controls/describe.ts` | field tables for every touch/display control type (V4.3 guide ch. 7–8), bounds, field read/write |
+| `src/core/controls/geometry.ts`, `templates.ts` | move/resize by rewriting position fields; new-control templates |
+| `src/core/project/ops.ts`, `vp.ts` | page and control edits, page renumbering; VP usage, overlaps, allocation |
+| `src/core/sim/simulator.ts` | VP memory, touch actions, what displays show |
 | `src/core/project/` | project model, `decompile` (DWIN_SET → project), `compile` (project → DWIN_SET), blank template |
 | `src/io/` | `.dgusproj` zip, DWIN_SET zip/folder import, IndexedDB store |
 | `src/ui/` | Preact app: store + autosave, page list, canvas, inspector |

@@ -109,3 +109,36 @@ pre.hex { background: var(--bg); padding: 8px; border-radius: 4px; overflow-x: a
   .app { grid-template: "bar" auto "stage" minmax(300px, 1fr) "side" auto "insp" auto / 100%; height: auto; }
   .sidebar, .inspector { border: 0; border-top: 1px solid var(--line); }
 }
+
+/* --- M2 editing --- */
+.push { margin-left: auto; }
+button:disabled, select:disabled { opacity: 0.45; cursor: default; }
+button.danger { color: var(--bad); }
+.toolbar select.add { padding: 4px 6px; border-radius: 6px; }
+.tabs { display: flex; gap: 2px; margin: 6px 0 4px; border-bottom: 1px solid var(--line); }
+.tab { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 6px 10px; }
+.tab.active { border-bottom-color: var(--accent); font-weight: 600; }
+.inspector .row { margin: 6px 0; }
+.field-edit { display: inline-flex; gap: 4px; align-items: center; }
+.field-edit input[type="color"] { width: 26px; height: 22px; padding: 0; border: 1px solid var(--line); background: none; }
+input.num, .inspector select { width: 7.5em; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+input.invalid { border-color: var(--bad); }
+dl.form dd input { width: 100%; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+textarea.raw { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; }
+.vps th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 2px 4px; }
+.vps tr { cursor: pointer; }
+.vps tr:hover td { background: var(--hover); }
+.vps tr.clash td { color: var(--bad); }
+.good { color: var(--good); }
+.clashes ul { padding-left: 16px; margin: 4px 0; }
+.log { list-style: none; padding: 0; margin: 0; max-height: 40vh; overflow: auto; }
+.log li { padding: 1px 0; border-bottom: 1px solid var(--line); }
+.inspector input[placeholder] { padding: 3px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+.handle { fill: var(--panel); stroke: var(--accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.h-n, .h-s { cursor: ns-resize; } .h-e, .h-w { cursor: ew-resize; }
+.h-nw, .h-se { cursor: nwse-resize; } .h-ne, .h-sw { cursor: nesw-resize; }
+.overlay { touch-action: none; }
+.ctl.touch, .ctl.display { cursor: move; }
+.ctl.sim { fill: transparent; stroke: none; cursor: pointer; }
+.ctl.sim:hover { fill: rgb(255 255 255 / 0.12); stroke: rgb(255 255 255 / 0.5); stroke-width: 1; }
+.simulating { outline: 2px solid var(--good); }

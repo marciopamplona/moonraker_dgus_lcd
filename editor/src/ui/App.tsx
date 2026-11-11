@@ -1,6 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { importDropped } from "./actions";
-import { Inspector } from "./Inspector";
+import { onKey } from "./commands";
+import { Panel } from "./Panel";
 import { PageCanvas } from "./PageCanvas";
 import { Sidebar } from "./Sidebar";
 import { Toolbar } from "./Toolbar";
@@ -24,10 +25,12 @@ export function App() {
       setDrag(false);
       if (e.dataTransfer) void importDropped(e.dataTransfer);
     };
+    window.addEventListener("keydown", onKey);
     window.addEventListener("dragover", over);
     window.addEventListener("dragleave", leave);
     window.addEventListener("drop", drop);
     return () => {
+      window.removeEventListener("keydown", onKey);
       window.removeEventListener("dragover", over);
       window.removeEventListener("dragleave", leave);
       window.removeEventListener("drop", drop);
@@ -41,7 +44,7 @@ export function App() {
           <Toolbar />
           <Sidebar />
           <PageCanvas />
-          <Inspector />
+          <Panel />
         </div>
       ) : (
         <Welcome />

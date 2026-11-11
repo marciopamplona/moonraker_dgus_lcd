@@ -8,12 +8,19 @@ import { VAR_NAMES, varType } from "../formats/var14";
 
 export type FieldFmt = "dec" | "hex" | "vp" | "color" | "page" | "icon" | "lib" | "bool" | "signed" | "ascii";
 
+/** How a field takes part in moving / resizing a control: "x"/"y" move
+ * with it; "xs".."ye" are the edges of its resizable box (and move too). */
+export type Geo = "x" | "y" | "xs" | "ys" | "xe" | "ye";
+
 export interface FieldSpec {
   name: string;
   off: number;
   size: 1 | 2 | 4;
   fmt?: FieldFmt;
   note?: string;
+  geo?: Geo;
+  /** Not editable (structure markers, the entry's page). */
+  fixed?: boolean;
 }
 
 export interface Field extends FieldSpec {
@@ -35,14 +42,17 @@ export interface ControlInfo {
   icon: [number, number, number, number, boolean] | null;
 }
 
-const f = (name: string, off: number, size: 1 | 2 | 4, fmt?: FieldFmt, note?: string): FieldSpec =>
-  ({ name, off, size, fmt, note });
+const f = (name: string, off: number, size: 1 | 2 | 4, fmt?: FieldFmt, note?: string, geo?: Geo): FieldSpec =>
+  ({ name, off, size, fmt, note, geo });
+const gx = (name: string, off: number, geo: Geo = "x"): FieldSpec => f(name, off, 2, undefined, undefined, geo);
+const gy = (name: string, off: number, geo: Geo = "y"): FieldSpec => f(name, off, 2, undefined, undefined, geo);
+const fixed = (s: FieldSpec): FieldSpec => ({ ...s, fixed: true });
 
 // --- touch -----------------------------------------------------------------
 const TOUCH_HEAD: FieldSpec[] = [
   f("Flags", 0, 1, "hex", ".3 = click sound"),
-  f("Page", 1, 1, "page"),
-  f("Xs", 2, 2), f("Ys", 4, 2), f("Xe", 6, 2), f("Ye", 8, 2),
+  fixed(f("Page", 1, 1, "page")),
+  gx("Xs", 2, "xs"), gy("Ys", 4, "ys"), gx("Xe", 6, "xe"), gy("Ye", 8, "ye"),
   f("Pic_Next", 10, 2, "page", "0xFF.. = no page switch"),
   f("Pic_On", 12, 2, "page", "0xFF.. = no press effect"),
   f("TP_Code", 14, 2, "hex", "0xFE.. function (0xFD.. = no auto upload)"),
@@ -51,7 +61,7 @@ const TOUCH_HEAD: FieldSpec[] = [
 const TOUCH_FUNC: Record<number, FieldSpec[]> = {
   0x00: [
     f("VP", 17, 2, "vp"), f("V_Type", 19, 1, "hex", "0 int16, 1 int32, 2 high byte, 3 low byte"),
-    f("N_Int", 20, 1), f("N_Dot", 21, 1), f("Cursor X", 22, 2), f("Cursor Y", 24, 2),
+    f("N_Int", 20, 1), f("N_Dot", 21, 1), gx("Cursor X", 22), gy("Cursor Y", 24),
     f("Color", 26, 2, "color"), f("Lib_ID", 28, 1, "lib"), f("Font_X", 29, 1),
     f("Cursor_Color", 30, 1, "hex"), f("Hide", 31, 1, "hex"),
     f("KB_Source", 33, 1, "hex", "0 = current page, 1 = other page"), f("PIC_KB", 34, 2, "page"),
@@ -71,7 +81,7 @@ const TOUCH_FUNC: Record<number, FieldSpec[]> = {
   ],
   0x03: [
     f("VP", 17, 2, "vp"), f("Adj_Mode", 19, 1, "hex", "0x0* horizontal, 0x1* vertical"),
-    f("Area Xs", 20, 2), f("Area Ys", 22, 2), f("Area Xe", 24, 2), f("Area Ye", 26, 2),
+    gx("Area Xs", 20), gy("Area Ys", 22), gx("Area Xe", 24), gy("Area Ye", 26),
     f("V_begin", 28, 2), f("V_end", 30, 2),
   ],
   0x05: [
@@ -81,55 +91,56 @@ const TOUCH_FUNC: Record<number, FieldSpec[]> = {
   0x06: [
     f("VP", 17, 2, "vp"), f("VP_Len_Max", 19, 1), f("Scan_Mode", 20, 1, "hex"), f("Lib_ID", 21, 1, "lib"),
     f("Font_X", 22, 1), f("Font_Y", 23, 1), f("Cursor_Color", 24, 1, "hex"), f("Color", 25, 2, "color"),
-    f("Text Xs", 27, 2), f("Text Ys", 29, 2), f("Text Xe", 33, 2), f("Text Ye", 35, 2),
+    gx("Text Xs", 27), gy("Text Ys", 29), gx("Text Xe", 33), gy("Text Ye", 35),
     f("KB_Source", 37, 1, "hex"), f("PIC_KB", 38, 2, "page"),
   ],
   0x09: [
-    f("VP", 17, 2, "vp"), f("Data_Format", 19, 1, "hex"), f("Xc", 20, 2), f("Yc", 22, 2),
+    f("VP", 17, 2, "vp"), f("Data_Format", 19, 1, "hex"), gx("Xc", 20), gy("Yc", 22),
     f("R0", 24, 2), f("R1", 26, 2), f("A0", 28, 2), f("V_begin", 30, 2), f("A1", 33, 2), f("V_end", 35, 2),
   ],
 };
 
 // --- display ---------------------------------------------------------------
-const VAR_HEAD: FieldSpec[] = [f("Type", 1, 1, "hex"), f("SP", 2, 2, "hex"), f("Length (words)", 4, 2)];
+const VAR_HEAD: FieldSpec[] = [fixed(f("Type", 1, 1, "hex")), f("SP", 2, 2, "hex"), fixed(f("Length (words)", 4, 2))];
 const VP = f("VP", 6, 2, "vp");
-const XY = [f("X", 8, 2), f("Y", 10, 2)];
+const XY = [gx("X", 8), gy("Y", 10)];
+const BOX = (o: number) => [gx("Xs", o, "xs"), gy("Ys", o + 2, "ys"), gx("Xe", o + 4, "xe"), gy("Ye", o + 6, "ye")];
 
 const VAR_FIELDS: Record<number, FieldSpec[]> = {
   0x00: [VP, ...XY, f("V_Min", 12, 2), f("V_Max", 14, 2), f("Icon_Min", 16, 2, "icon"), f("Icon_Max", 18, 2, "icon"),
     f("Icon_Lib", 20, 1, "lib"), f("Mode", 21, 1, "hex", "0 = transparent")],
   0x01: [VP, ...XY, f("V_Stop", 14, 2), f("V_Start", 16, 2), f("Icon_Stop", 18, 2, "icon"),
     f("Icon_Start", 20, 2, "icon"), f("Icon_End", 22, 2, "icon"), f("Icon_Lib", 24, 1, "lib"), f("Mode", 25, 1, "hex")],
-  0x02: [VP, f("V_begin", 8, 2), f("V_end", 10, 2), f("X_begin", 12, 2), f("X_end", 14, 2),
-    f("Icon_ID", 16, 2, "icon"), f("Y", 18, 2), f("X_adj", 20, 1), f("Mode", 21, 1, "hex", "0 horizontal, 1 vertical"),
+  0x02: [VP, f("V_begin", 8, 2), f("V_end", 10, 2), gx("X_begin", 12), gx("X_end", 14),
+    f("Icon_ID", 16, 2, "icon"), gy("Y", 18), f("X_adj", 20, 1), f("Mode", 21, 1, "hex", "0 horizontal, 1 vertical"),
     f("Icon_Lib", 22, 1, "lib"), f("Icon_Mode", 23, 1, "hex"), f("VP_Data_Mode", 24, 1, "hex")],
   0x03: [VP, ...XY, f("Icon0", 12, 2, "icon"), f("Icon_Lib", 14, 1, "lib"), f("Icon_Mode", 15, 1, "hex"),
     f("Int_Num", 16, 1), f("Dec_Num", 17, 1), f("VP_Data_Mode", 18, 1, "hex"), f("ALI", 19, 1, "hex")],
   0x04: [f("Pic_Begin", 8, 2, "page"), f("Pic_End", 10, 2, "page"), f("Frame_Time", 12, 1, "dec", "x 8 ms")],
-  0x05: [VP, f("Icon_ID", 8, 2, "icon"), f("Icon_Xc", 10, 2), f("Icon_Yc", 12, 2), f("Xc", 14, 2), f("Yc", 16, 2),
+  0x05: [VP, f("Icon_ID", 8, 2, "icon"), f("Icon_Xc", 10, 2), f("Icon_Yc", 12, 2), gx("Xc", 14), gy("Yc", 16),
     f("V_Begin", 18, 2), f("V_End", 20, 2), f("AL_Begin", 22, 2), f("AL_End", 24, 2), f("VP_Mode", 26, 1, "hex"),
     f("Lib_ID", 27, 1, "lib"), f("Mode", 28, 1, "hex")],
   0x06: [VP, f("VP_AUX", 8, 2, "vp"), f("Act_Bit_Set", 10, 2, "hex"), f("Display_Mode", 12, 1, "hex"),
     f("Move_Mode", 13, 1, "hex"), f("Icon_Mode", 14, 1, "hex"), f("Icon_Lib", 15, 1, "lib"),
     f("ICON0S", 16, 2, "icon"), f("ICON0E", 18, 2, "icon"), f("ICON1S", 20, 2, "icon"), f("ICON1E", 22, 2, "icon"),
-    f("X", 24, 2), f("Y", 26, 2), f("DIS_MOV", 28, 2)],
+    gx("X", 24), gy("Y", 26), f("DIS_MOV", 28, 2)],
   0x10: [VP, ...XY, f("Color", 12, 2, "color"), f("Lib_ID", 14, 1, "lib"), f("Font_X", 15, 1),
     f("ALI", 16, 1, "hex", "0 right, 1 left, 2 centre"), f("Int_Num", 17, 1), f("Dec_Num", 18, 1),
-    f("VP_Data_Mode", 19, 1, "hex"), f("Len_unit", 20, 1)],
-  0x11: [VP, ...XY, f("Color", 12, 2, "color"), f("Xs", 14, 2), f("Ys", 16, 2), f("Xe", 18, 2), f("Ye", 20, 2),
-    f("Text_length", 22, 2), f("Font0_ID", 24, 1, "lib"), f("Font1_ID", 25, 1, "lib"), f("Font_X", 26, 1),
+    f("VP_Data_Mode", 19, 1, "hex", "0 int16, 1 int32, 2 high byte, 3 low byte, 4 int64, 5 uint16, 6 uint32"),
+    f("Len_unit", 20, 1)],
+  0x11: [VP, ...XY, f("Color", 12, 2, "color"), ...BOX(14),
+    f("Text_length", 22, 2, "dec", "bytes"), f("Font0_ID", 24, 1, "lib"), f("Font1_ID", 25, 1, "lib"), f("Font_X", 26, 1),
     f("Font_Y", 27, 1), f("Encode_Mode", 28, 1, "hex"), f("HOR_Dis", 29, 1), f("VER_Dis", 30, 1)],
   0x12: [f("Mode", 6, 2, "hex", "0 digital, 1 analog"), ...XY, f("Color", 12, 2, "color"),
     f("Lib_ID", 14, 1, "lib"), f("Font_X", 15, 1)],
   0x13: [VP, ...XY, f("Color", 12, 2, "color"), f("Byte_Num", 14, 1), f("Lib_ID", 15, 1, "lib"), f("Font_X", 16, 1)],
   0x14: [VP, f("Rolling_Mode", 8, 1, "hex"), f("Rolling_Dis", 9, 1), f("Adjust_Mode", 10, 1, "hex"),
-    f("Run_Control", 11, 1, "hex"), f("Color", 12, 2, "color"), f("Xs", 14, 2), f("Ys", 16, 2), f("Xe", 18, 2),
-    f("Ye", 20, 2), f("Font0_ID", 22, 1, "lib"), f("Font1_ID", 23, 1, "lib"), f("Font_X", 24, 1), f("Font_Y", 25, 1),
+    f("Run_Control", 11, 1, "hex"), f("Color", 12, 2, "color"), ...BOX(14), f("Font0_ID", 22, 1, "lib"), f("Font1_ID", 23, 1, "lib"), f("Font_X", 24, 1), f("Font_Y", 25, 1),
     f("Encode_Mode", 26, 1, "hex"), f("Text_Dis", 27, 1)],
-  0x20: [f("Xs", 8, 2), f("Ys", 10, 2), f("Xe", 12, 2), f("Ye", 14, 2), f("Y_Central", 16, 2)],
+  0x20: [...BOX(8), gy("Y_Central", 16)],
 };
 
-function read(e: Uint8Array, s: FieldSpec): number {
+export function readField(e: Uint8Array, s: FieldSpec): number {
   if (s.off + s.size > e.length) return NaN;
   if (s.size === 1) return u8(e, s.off);
   if (s.size === 2) return u16(e, s.off);
@@ -138,7 +149,7 @@ function read(e: Uint8Array, s: FieldSpec): number {
 }
 
 function decode(e: Uint8Array, specs: FieldSpec[]): Field[] {
-  return specs.map((s) => ({ ...s, value: read(e, s) })).filter((x) => !Number.isNaN(x.value));
+  return specs.map((s) => ({ ...s, value: readField(e, s) })).filter((x) => !Number.isNaN(x.value));
 }
 
 const get = (fields: Field[], name: string) => fields.find((x) => x.name === name)?.value ?? 0;
@@ -215,6 +226,34 @@ export function describeVar(e: Uint8Array, iconSize?: (lib: number, id: number) 
     kind: "display", type: t, typeName: VAR_NAMES[t] ?? `Type 0x${t.toString(16)}`,
     vp: vpField ? vpField.value : null, bounds, estimated, fields, jumpTo: null, icon,
   };
+}
+
+/** Field specs that apply to an entry (head + type-specific). */
+export function fieldSpecs(kind: "touch" | "display", e: Uint8Array): FieldSpec[] {
+  if (kind === "touch") {
+    const code = u16(e, 14);
+    const fn = isFunctionCode(code) ? code & 0xff : -1;
+    return [...TOUCH_HEAD, ...(fn >= 0 ? TOUCH_FUNC[fn] ?? [] : [])].filter((s) => s.off + s.size <= e.length);
+  }
+  return [...VAR_HEAD, ...(VAR_FIELDS[varType(e) ?? -1] ?? [])].filter((s) => s.off + s.size <= e.length);
+}
+
+export function fieldRange(s: FieldSpec): [number, number] {
+  if (s.fmt === "signed") return [-0x80000000, 0x7fffffff];
+  return [0, s.size === 1 ? 0xff : s.size === 2 ? 0xffff : 0xffffffff];
+}
+
+/** Copy of `e` with field `s` set to `value` (clamped to the field's range). */
+export function writeField(e: Uint8Array, s: FieldSpec, value: number): Uint8Array {
+  const [lo, hi] = fieldRange(s);
+  const v = Math.max(lo, Math.min(hi, Math.round(value)));
+  const out = e.slice();
+  const dv = new DataView(out.buffer);
+  if (s.size === 1) dv.setUint8(s.off, v);
+  else if (s.size === 2) dv.setUint16(s.off, v);
+  else if (s.fmt === "signed") dv.setInt32(s.off, v);
+  else dv.setUint32(s.off, v);
+  return out;
 }
 
 export function formatField(x: Field): string {

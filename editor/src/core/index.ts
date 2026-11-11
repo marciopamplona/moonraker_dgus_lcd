@@ -14,3 +14,8 @@ export * from "./project/schema";
 export * from "./project/decompile";
 export * from "./project/compile";
 export * from "./project/blank";
+export * from "./controls/geometry";
+export * from "./controls/templates";
+export * from "./project/ops";
+export * from "./project/vp";
+export * from "./sim/simulator";

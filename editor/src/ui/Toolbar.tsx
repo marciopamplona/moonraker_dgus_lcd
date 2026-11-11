@@ -1,6 +1,7 @@
 import { useRef } from "preact/hooks";
-import { closeDoc, edit, setState, useStore, type SaveState } from "./store";
+import { closeDoc, edit, redo, resetSim, setState, undo, useStore, type SaveState } from "./store";
 import { exportDwinSet, importFolder, openFile, saveFile } from "./actions";
+import { TEMPLATES, addFromTemplate } from "./commands";
 
 export function FilePickers({ onFolder, onFile }: { onFolder: (f: FileList) => void; onFile: (f: File) => void }) {
   const folder = useRef<HTMLInputElement>(null);
@@ -55,6 +56,33 @@ export function Toolbar() {
         }}
       />
       <span class={`save ${s.save}`} title={s.saveError}>{SAVE_TEXT[s.save]}</span>
+      <button class="small" disabled={!s.past.length} title="Undo (Ctrl+Z)" onClick={undo}>↶</button>
+      <button class="small" disabled={!s.future.length} title="Redo (Ctrl+Shift+Z)" onClick={redo}>↷</button>
+      <select
+        class="add" value="" disabled={s.mode !== "edit"} aria-label="Add control"
+        onChange={(e) => {
+          const v = e.currentTarget.value;
+          e.currentTarget.value = "";
+          if (v) addFromTemplate(v);
+        }}
+      >
+        <option value="">+ Add control…</option>
+        <optgroup label="Touch">
+          {TEMPLATES.filter((t) => t.kind === "touch").map((t) => <option key={t.id} value={t.id} title={t.hint}>{t.label}</option>)}
+        </optgroup>
+        <optgroup label="Display">
+          {TEMPLATES.filter((t) => t.kind === "display").map((t) => <option key={t.id} value={t.id} title={t.hint}>{t.label}</option>)}
+        </optgroup>
+      </select>
+      <button
+        class={s.mode === "simulate" ? "small primary" : "small"} title="Click through the project in the browser"
+        onClick={() => {
+          if (s.mode === "edit") resetSim();
+          setState({ mode: s.mode === "edit" ? "simulate" : "edit", selection: null });
+        }}
+      >
+        {s.mode === "simulate" ? "■ Stop" : "▶ Simulate"}
+      </button>
       <span class="spacer" />
       <label class="small">
         Zoom

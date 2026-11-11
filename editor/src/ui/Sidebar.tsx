@@ -2,7 +2,8 @@ import { useEffect, useRef } from "preact/hooks";
 import type { Page, ProjectDoc } from "../core/project/schema";
 import { classify } from "../core/formats/dwinset";
 import { pictureCanvas } from "./render";
-import { setState, useStore } from "./store";
+import { goPage, useStore } from "./store";
+import { newPage } from "./commands";
 
 function Thumb({ doc, page }: { doc: ProjectDoc; page: Page }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -26,13 +27,16 @@ export function Sidebar() {
   const doc = s.doc!;
   return (
     <nav class="sidebar">
-      <h3>Pages <span class="muted">{doc.project.pages.length}</span></h3>
+      <h3>
+        Pages <span class="muted">{doc.project.pages.length}</span>
+        <button class="small ghost push" title="Add a page" disabled={s.mode !== "edit"} onClick={newPage}>+ Page</button>
+      </h3>
       <ul class="pages">
         {doc.project.pages.map((p) => (
           <li key={p.id}>
             <button
               class={p.id === s.pageId ? "page active" : "page"}
-              onClick={() => setState({ pageId: p.id, selection: null })}
+              onClick={() => goPage(p.id)}
             >
               <Thumb doc={doc} page={p} />
               <span class="pname">
