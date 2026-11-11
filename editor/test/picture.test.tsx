@@ -6,7 +6,7 @@ import { createCanvas } from "@napi-rs/canvas";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Bitmap, blankProject, fromHex, getPage, readHead, returnKey, addControl } from "../src/core";
+import { Bitmap, blankProject, fromHex, getPage, readHead, returnKey, addControl, newLayer, type ImageLayer } from "../src/core";
 import { App } from "../src/ui/App";
 import { setCanvasFactory } from "../src/ui/artEnv";
 import { getState, openDoc, setState } from "../src/ui/store";
@@ -131,5 +131,68 @@ describe("picture mode", () => {
     expect(pixel(230, 130, 0)).toEqual([255, 255, 255]);
     await click(btn("Controls"));
     expect(getState().mode).toBe("edit");
+  });
+
+  it("image layers keep their aspect ratio by default; Shift or the checkbox frees them", async () => {
+    const doc = blankProject("Aspect");
+    const src = new Bitmap(40, 20);
+    src.px.fill(200);
+    doc.assets.set("art/test.bmp", src.save());
+    await act(() => openDoc(doc, [], false));
+    await click(btn("Picture"));
+    const img = { ...newLayer("image", { x: 100, y: 100, w: 80, h: 40 }), asset: "art/test.bmp", ratio: 2 } as ImageLayer;
+    const { artEdit } = await import("../src/ui/artCommands");
+    await act(() => {
+      artEdit((a) => void a.layers.push(img));
+      setState({ layerId: img.id });
+    });
+    const layer = () => art()!.layers.find((l) => l.id === img.id) as ImageLayer;
+    const handle = (cls: string) => root.querySelector(`svg.overlay.art rect.handle.h-${cls}`)!;
+    const dragHandle = async (cls: string, x0: number, y0: number, x1: number, y1: number, shiftKey = false) => {
+      await fire(handle(cls), new PointerEvent("pointerdown", { bubbles: true, clientX: x0, clientY: y0, button: 0, pointerId: 1 }));
+      await fire(root.querySelector("svg.overlay.art"), new PointerEvent("pointermove", { bubbles: true, clientX: x1, clientY: y1, pointerId: 1, shiftKey }));
+      await pointer("pointerup", x1, y1);
+    };
+    const aspectBox = () => [...root.querySelectorAll("label.prop")].find((l) => l.textContent?.includes("Fixed aspect ratio"))!
+      .querySelector<HTMLInputElement>("input[type=checkbox]")!;
+    expect(aspectBox().checked).toBe(true);
+
+    await dragHandle("se", 180, 140, 220, 140); // widen by 40 -> 120 x 60
+    expect([layer().x, layer().y, layer().w, layer().h]).toEqual([100, 100, 120, 60]);
+    await dragHandle("s", 160, 160, 160, 190); // taller by 30 -> 180 x 90, centred
+    expect([layer().w, layer().h]).toEqual([180, 90]);
+    expect(layer().x).toBe(70);
+
+    await dragHandle("e", 250, 145, 270, 145, true); // Shift: free
+    expect([layer().w, layer().h]).toEqual([200, 90]);
+
+    // untick: free resizing, W no longer drives H
+    const box = aspectBox();
+    await act(() => {
+      box.checked = false;
+      box.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(layer().keepAspect).toBe(false);
+    await dragHandle("se", 270, 190, 300, 200);
+    expect([layer().w, layer().h]).toEqual([230, 100]);
+    const wInput = [...root.querySelectorAll<HTMLInputElement>(".props .grid4 input")][2]!;
+    await act(() => {
+      wInput.value = "100";
+      wInput.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect([layer().w, layer().h]).toEqual([100, 100]);
+
+    // tick again: W drives H with the image's natural ratio (2:1)
+    await act(() => {
+      const b = aspectBox();
+      b.checked = true;
+      b.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    const w2 = [...root.querySelectorAll<HTMLInputElement>(".props .grid4 input")][2]!;
+    await act(() => {
+      w2.value = "160";
+      w2.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect([layer().w, layer().h]).toEqual([160, 80]);
   });
 });

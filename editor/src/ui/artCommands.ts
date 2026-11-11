@@ -105,7 +105,7 @@ export async function addImageFile(file: File): Promise<void> {
   const lw = Math.max(1, Math.round(iw * k)), lh = Math.max(1, Math.round(ih * k));
   const key = `art/${layerId()}.${e}`;
   const layer: Layer = { ...newLayer("image", { x: Math.round((w - lw) / 2), y: Math.round((h - lh) / 2), w: lw, h: lh }),
-    asset: key, name: file.name } as Layer;
+    asset: key, name: file.name, keepAspect: true, ratio: iw / ih } as Layer;
   const id = artEdit((a, d) => {
     d.assets.set(key, data);
     a.layers.push(layer);

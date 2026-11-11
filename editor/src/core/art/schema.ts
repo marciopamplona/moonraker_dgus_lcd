@@ -19,6 +19,10 @@ export interface ImageLayer extends Base {
   y: number;
   w: number;
   h: number;
+  /** Resize keeping the aspect ratio (default true when absent). */
+  keepAspect?: boolean;
+  /** Natural width / height of the source image. */
+  ratio?: number;
 }
 
 export interface Gradient {
@@ -127,7 +131,7 @@ export function newLayer(type: LayerType, at: { x: number; y: number; w?: number
     case "paint":
       return { ...base("Paint"), type, strokes: [] };
     case "image":
-      return { ...base("Image"), type, asset: "", x, y, w, h };
+      return { ...base("Image"), type, asset: "", x, y, w, h, keepAspect: true };
   }
 }
 
@@ -186,4 +190,42 @@ export function setLayerBox(l: Layer, b: Box): Layer {
 /** Asset keys an artwork uses. */
 export function artAssets(a: Artwork): string[] {
   return a.layers.flatMap((l) => (l.type === "image" && l.asset ? [l.asset] : []));
+}
+
+export type ResizeHandle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
+
+/** Aspect ratio an image layer keeps when resized, or null if free. */
+export function lockedRatio(l: Layer): number | null {
+  if (l.type !== "image" || l.keepAspect === false) return null;
+  return l.ratio && l.ratio > 0 ? l.ratio : l.h > 0 ? l.w / l.h : null;
+}
+
+/** Box after dragging `handle` of `orig` by (dx, dy); with `ratio`, the
+ * box keeps width / height = ratio: corners scale from the opposite
+ * corner, edges resize and stay centred on the other axis. */
+export function resizeBox(orig: Box, handle: ResizeHandle, dx: number, dy: number, ratio: number | null = null): Box {
+  const [ox, oy, ow, oh] = orig;
+  let x = ox, y = oy, w = ow, h = oh;
+  if (handle.includes("w")) { x += dx; w -= dx; }
+  if (handle.includes("e")) w += dx;
+  if (handle.includes("n")) { y += dy; h -= dy; }
+  if (handle.includes("s")) h += dy;
+  if (!ratio) return [x, y, w, h];
+  w = Math.max(1, w);
+  h = Math.max(1, h);
+  const corner = handle.length === 2;
+  if (corner) {
+    // follow whichever side moved more, relative to its size
+    if (Math.abs(w / ow - 1) >= Math.abs(h / oh - 1)) h = w / ratio;
+    else w = h * ratio;
+    x = handle.includes("w") ? ox + ow - w : ox;
+    y = handle.includes("n") ? oy + oh - h : oy;
+  } else if (handle === "e" || handle === "w") {
+    h = w / ratio;
+    y = oy + (oh - h) / 2;
+  } else {
+    w = h * ratio;
+    x = ox + (ow - w) / 2;
+  }
+  return [x, y, w, h];
 }

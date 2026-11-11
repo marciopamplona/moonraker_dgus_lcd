@@ -1,7 +1,9 @@
 // Picture mode on the canvas: pick, move and resize layers, draw new
 // shapes by dragging, paint strokes, pick colours.
 import { useRef } from "preact/hooks";
-import { hasBox, layerBox, moveLayer, newLayer, setLayerBox, type Box, type Layer, type PaintLayer } from "../core/art/schema";
+import {
+  hasBox, layerBox, lockedRatio, moveLayer, newLayer, resizeBox, setLayerBox, type Layer, type PaintLayer, type ResizeHandle,
+} from "../core/art/schema";
 import { Bitmap } from "../core/formats/bmp";
 import { T5UID1 } from "../core/profile/t5uid1";
 import { artEdit, setLayer, toHex } from "./artCommands";
@@ -20,16 +22,7 @@ interface Drag {
   moved: boolean;
 }
 
-function resizeBox(b: Box, h: Handle, dx: number, dy: number): Box {
-  let [x, y, w, hh] = b;
-  if (h.includes("w")) { x += dx; w -= dx; }
-  if (h.includes("e")) w += dx;
-  if (h.includes("n")) { y += dy; hh -= dy; }
-  if (h.includes("s")) hh += dy;
-  return [x, y, w, hh];
-}
-
-function handleXY(b: Box, h: Handle): [number, number] {
+function handleXY(b: [number, number, number, number], h: Handle): [number, number] {
   const [x, y, w, hh] = b;
   return [h.includes("w") ? x : h.includes("e") ? x + w : x + w / 2, h.includes("n") ? y : h.includes("s") ? y + hh : y + hh / 2];
 }
@@ -143,7 +136,11 @@ export function ArtOverlay() {
         return setLayerBox(l, [d.start[0], d.start[1], dx, dy]);
       }, opts);
     } else if (d.kind === "resize") {
-      setLayer(d.id, () => setLayerBox(d.orig, resizeBox(layerBox(d.orig)!, d.handle!, dx, dy)), opts);
+      // Shift inverts "fixed aspect ratio" while dragging
+      const locked = lockedRatio(d.orig);
+      const free = d.orig.type === "image" && d.orig.h > 0 ? d.orig.w / d.orig.h : null;
+      const ratio = e.shiftKey ? (locked ? null : (d.orig.type === "image" ? (d.orig.ratio ?? free) : null)) : locked;
+      setLayer(d.id, () => setLayerBox(d.orig, resizeBox(layerBox(d.orig)!, d.handle as ResizeHandle, dx, dy, ratio)), opts);
     } else if (d.kind === "stroke") {
       artEdit((a) => {
         const p = a.layers.find((l) => l.id === d.id) as PaintLayer | undefined;

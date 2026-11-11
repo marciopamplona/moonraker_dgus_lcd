@@ -21,7 +21,8 @@ Work in progress; see [docs/EDITOR_PLAN.md](../docs/EDITOR_PLAN.md).
   Simulate. Each page can have layers: image (PNG/JPG/BMP/GIF/WebP/SVG,
   scaled), rectangle (rounded corners, gradient, inner border), ellipse,
   line, text (system fonts or uploaded TTF/OTF/WOFF), and paint (brush and
-  eraser strokes). Every layer has visibility, lock, opacity and order. Tools:
+  eraser strokes). Images keep their aspect ratio when resized ("Fixed
+  aspect ratio", on by default; hold Shift while dragging to invert). Every layer has visibility, lock, opacity and order. Tools:
   select/move/resize, draw shapes by dragging, text, brush, eraser,
   eyedropper. Every change flattens the layers into the page's 24-bit BMP
   in the same undo step. There's optional ordered dithering to RGB565 and an

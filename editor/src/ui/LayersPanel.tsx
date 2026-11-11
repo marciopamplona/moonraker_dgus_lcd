@@ -1,5 +1,5 @@
 import { useRef, useState } from "preact/hooks";
-import { SYSTEM_FONTS, type Layer } from "../core/art/schema";
+import { SYSTEM_FONTS, lockedRatio, type Layer } from "../core/art/schema";
 import {
   addImageFile, addLayer, deleteLayer, discardArt, duplicateSelectedLayer, moveSelectedLayer, patchLayer,
   pressedVariant, setArtSetting, setLayer, uploadFont,
@@ -58,13 +58,29 @@ function LayerProps({ l, fonts }: { l: Layer; fonts: string[] }) {
       <label class="prop"><span>Opacity</span>
         <input type="range" min={0} max={100} value={Math.round(l.opacity * 100)}
           onInput={(e) => p({ opacity: Number(e.currentTarget.value) / 100 }, "opacity")} /></label>
-      {(l.type === "image" || l.type === "rect" || l.type === "ellipse") && (
-        <div class="grid4">
-          <Num label="X" value={l.x} k={k} onSet={(v) => p({ x: v })} />
-          <Num label="Y" value={l.y} k={k} onSet={(v) => p({ y: v })} />
-          <Num label="W" value={l.w} min={1} k={k} onSet={(v) => p({ w: Math.max(1, v) })} />
-          <Num label="H" value={l.h} min={1} k={k} onSet={(v) => p({ h: Math.max(1, v) })} />
-        </div>
+      {(l.type === "image" || l.type === "rect" || l.type === "ellipse") && (() => {
+        const ratio = lockedRatio(l);
+        return (
+          <div class="grid4">
+            <Num label="X" value={l.x} k={k} onSet={(v) => p({ x: v })} />
+            <Num label="Y" value={l.y} k={k} onSet={(v) => p({ y: v })} />
+            <Num label="W" value={l.w} min={1} k={k} onSet={(v) => {
+              const w = Math.max(1, Math.round(v));
+              p(ratio ? { w, h: Math.max(1, Math.round(w / ratio)) } : { w });
+            }} />
+            <Num label="H" value={l.h} min={1} k={k} onSet={(v) => {
+              const h = Math.max(1, Math.round(v));
+              p(ratio ? { h, w: Math.max(1, Math.round(h * ratio)) } : { h });
+            }} />
+          </div>
+        );
+      })()}
+      {l.type === "image" && (
+        <label class="prop"><span>Fixed aspect ratio</span>
+          <input type="checkbox" checked={l.keepAspect !== false}
+            title="Resize without distorting the image (hold Shift while dragging to invert)"
+            onChange={(e) => p({ keepAspect: e.currentTarget.checked, ...(e.currentTarget.checked && !l.ratio ? { ratio: l.w / l.h } : {}) })} />
+        </label>
       )}
       {(l.type === "rect" || l.type === "ellipse") && (
         <>
