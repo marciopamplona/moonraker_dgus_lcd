@@ -185,10 +185,7 @@ class BuilderTest(unittest.TestCase):
     def test_prebuilt_is_current(self):
         """screen/macros must match a fresh build (rebuild with
         `python -m dgus_lcd.macros_screen --out screen/macros`)."""
-        rel = os.environ.get("DGUS_RELEASE") or os.path.expanduser(
-            "~/.cache/dgus_lcd/release-1.0.2/DWIN_SET")
-        if not os.path.isdir(rel):
-            self.skipTest("1.0.2 release not available")
+        rel = os.environ.get("DGUS_RELEASE") or ms.RELEASE_DIR
         with tempfile.TemporaryDirectory() as tmp:
             ms.build(rel, tmp)
             for n in ms.FILES:
@@ -197,9 +194,7 @@ class BuilderTest(unittest.TestCase):
                                  "screen/macros/%s is out of date" % n)
 
     def test_real_release_roundtrip(self):
-        rel = os.environ.get("DGUS_RELEASE")
-        if not rel:
-            self.skipTest("set DGUS_RELEASE to an unpacked 1.0.2 DWIN_SET")
+        rel = os.environ.get("DGUS_RELEASE") or ms.RELEASE_DIR
         for name, cls in (("13_touch.bin", sf.TouchFile),
                           ("14_variable.bin", sf.VariableFile)):
             data = read(os.path.join(rel, name))

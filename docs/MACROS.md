@@ -104,7 +104,7 @@ More page. They are **committed, ready to flash, in `screen/macros/`**:
 The `.png` files next to them are previews. The macro labels are drawn by
 the screen, so they aren't in the previews.
 
-The files are generated from the DGUS-reloaded-Klipper 1.0.2 release by
+The files are generated from the stock DGUS-reloaded-Klipper 1.0.2 files by
 `dgus_lcd/macros_screen.py`. To rebuild them, e.g. after changing the
 script:
 
@@ -114,8 +114,9 @@ cd ~/moonraker_ender6_lcd
 ~/dgus-env/bin/python -m dgus_lcd.macros_screen --out screen/macros --preview  # update the committed copy
 ```
 
-The release is downloaded once to `~/.cache/dgus_lcd/`, or pass
-`--release DIR`. Building needs Pillow (`~/dgus-env/bin/pip install pillow`);
+The stock input is the vendored
+`vendor/DGUS-reloaded-Klipper/project/DWIN_SET`, so nothing is downloaded;
+pass `--release DIR` to use another copy. Building needs Pillow (`~/dgus-env/bin/pip install pillow`);
 the service itself doesn't. The test `test_prebuilt_is_current` fails if
 `screen/macros/` no longer matches a fresh build.
 
@@ -185,7 +186,7 @@ Things that are untested on real hardware:
 - **Fonts:**
   - The original titles and captions are Segoe UI, baked into the page
     images. The static "Macros" title and caption are drawn the same way,
-    with **Selawik** (`vendor/selawik/`). Selawik is Microsoft's
+    with **Selawik** (`screen/fonts/`). Selawik is Microsoft's
     open-licensed (OFL) Segoe UI substitute, and it matches size, colour
     and position.
   - Macro names change, so the screen draws them at runtime with its

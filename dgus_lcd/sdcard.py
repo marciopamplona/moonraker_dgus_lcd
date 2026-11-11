@@ -2,9 +2,7 @@
 # screen change this repo provides. Everything comes from the repo; nothing
 # is downloaded:
 #
-#   - the DGUS-reloaded-Klipper 1.0.2 project files from vendor/
-#   - the compiled files upstream doesn't commit (13_touch.bin,
-#     14_variable.bin, 22_config.bin) from vendor/DGUS-reloaded-Klipper-release/
+#   - the stock DGUS-reloaded-Klipper 1.0.2 DWIN_SET from vendor/
 #   - the Macros and Parameters pages (screen/macros/, or rebuilt)
 #   - T5UID1.CFG with the chosen UART baud rate
 #
@@ -23,11 +21,7 @@ from . import screen_files as sf
 
 DEFAULT_OUT = os.path.join(ms.REPO_DIR, "build", "sdcard")
 DEFAULT_BAUD = 250000
-VENDOR_DWIN_SET = os.path.join(ms.REPO_DIR, "vendor", "DGUS-reloaded-Klipper",
-                               "project", "DWIN_SET")
-# stock compiled 1.0.2 release files, which the project copy lacks
-RELEASE_FILES = os.path.join(ms.REPO_DIR, "vendor",
-                             "DGUS-reloaded-Klipper-release", "DWIN_SET")
+VENDOR_DWIN_SET = ms.RELEASE_DIR
 CFG_NAME = "T5UID1.CFG"
 REQUIRED = ("13_touch.bin", "14_variable.bin", "22_config.bin", CFG_NAME,
             "0_DWIN_ASC.HZK")
@@ -56,12 +50,11 @@ After flashing
 """
 
 
-def build(out, baud=DEFAULT_BAUD, base=VENDOR_DWIN_SET,
-          compiled=RELEASE_FILES, rebuild=False):
+def build(out, baud=DEFAULT_BAUD, base=VENDOR_DWIN_SET, rebuild=False):
     """Write out/DWIN_SET and out/FLASHING.txt. Returns the DWIN_SET path.
 
-    `base` is copied first, then the files of `compiled` that base lacks.
-    That stock set is the input of --rebuild.
+    `base` (a stock 1.0.2 DWIN_SET) is copied, then patched. It is also the
+    input of --rebuild.
     """
     with open(os.path.join(base, CFG_NAME), "rb") as f:
         cfg = sf.set_cfg_baud(f.read(), baud)   # validate before writing
@@ -70,9 +63,6 @@ def build(out, baud=DEFAULT_BAUD, base=VENDOR_DWIN_SET,
     if os.path.isdir(dwin_set):
         shutil.rmtree(dwin_set)   # no stale files from an earlier build
     shutil.copytree(base, dwin_set)
-    for name in sorted(os.listdir(compiled)):
-        if not os.path.exists(os.path.join(dwin_set, name)):
-            shutil.copy(os.path.join(compiled, name), dwin_set)
     missing = [n for n in REQUIRED
                if not os.path.isfile(os.path.join(dwin_set, n))]
     if missing:
@@ -81,7 +71,7 @@ def build(out, baud=DEFAULT_BAUD, base=VENDOR_DWIN_SET,
 
     if rebuild:
         with tempfile.TemporaryDirectory() as tmp:
-            for path in ms.build(dwin_set, tmp):   # stock files as input
+            for path in ms.build(base, tmp):
                 shutil.copy(path, dwin_set)
         macros = "rebuilt"
     else:

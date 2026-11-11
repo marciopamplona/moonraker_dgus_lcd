@@ -31,18 +31,13 @@ class SdcardTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.tmp)
-        # like vendor/: no compiled 13/14/22 files
         self.base = fake_dir(self.tmp, "base",
-                             ("0_DWIN_ASC.HZK", "001_home.bmp"))
-        self.compiled = fake_dir(self.tmp, "compiled",
-                                 ("13_touch.bin", "14_variable.bin",
-                                  "22_config.bin", "001_home.bmp"))
-        os.remove(os.path.join(self.compiled, "T5UID1.CFG"))
+                             sdcard.REQUIRED[:-2] + ("0_DWIN_ASC.HZK",
+                                                     "001_home.bmp"))
         self.out = os.path.join(self.tmp, "out")
 
     def build(self, **kw):
         kw.setdefault("base", self.base)
-        kw.setdefault("compiled", self.compiled)
         return sdcard.build(self.out, **kw)
 
     def test_layout(self):
@@ -51,8 +46,8 @@ class SdcardTest(unittest.TestCase):
         self.assertTrue(os.path.isfile(os.path.join(self.out,
                                                     "FLASHING.txt")))
         self.assertEqual(read(os.path.join(d, "22_config.bin")),
-                         b"compiled 22_config.bin")
-        # base wins over compiled, macro files from screen/macros
+                         b"base 22_config.bin")
+        # base files kept, macro files from screen/macros
         self.assertEqual(read(os.path.join(d, "001_home.bmp")),
                          b"base 001_home.bmp")
         for name in ms.FILES:
@@ -78,7 +73,7 @@ class SdcardTest(unittest.TestCase):
         self.assertFalse(os.path.exists(self.out))
 
     def test_incomplete(self):
-        os.remove(os.path.join(self.compiled, "22_config.bin"))
+        os.remove(os.path.join(self.base, "22_config.bin"))
         with self.assertRaises(SystemExit):
             self.build()
         self.assertFalse(os.path.exists(os.path.join(self.out, "DWIN_SET")))
@@ -103,8 +98,8 @@ class RepoSdcardTest(unittest.TestCase):
         self.assertIn("24_icons.ico", names)
 
     def test_release_files_are_stock(self):
-        # the vendored release holds the unpatched files the builder starts from
-        touch = sf.TouchFile.parse(read(os.path.join(sdcard.RELEASE_FILES,
+        # vendor/ holds the unpatched files the builder starts from
+        touch = sf.TouchFile.parse(read(os.path.join(ms.RELEASE_DIR,
                                                      "13_touch.bin")))
         self.assertEqual(touch.for_page(ms.PAGE_MACROS), [])
 

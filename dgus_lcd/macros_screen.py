@@ -1,12 +1,14 @@
 # Build the "Macros" screen add-on for the DGUS-reloaded screen firmware.
 #
-# Takes the release DWIN_SET (DGUS-reloaded-Klipper 1.0.2) and writes the
-# four files that change:
+# Takes the stock DWIN_SET (DGUS-reloaded-Klipper 1.0.2, vendored in
+# vendor/DGUS-reloaded-Klipper/project/DWIN_SET) and writes the files that
+# change:
 #
-#   13_touch.bin          + Macros tile on page 18, touch areas of page 21
-#   14_variable.bin       + text fields of page 21 and the tile label
+#   13_touch.bin          + Macros tile on page 18, touch areas of pages 21-22
+#   14_variable.bin       + text fields of pages 21-22
 #   018_settings_menu2.bmp  "More" page with a Macros tile
 #   021_macros.bmp        new page: 6 macro tiles, < > arrows, back arrow
+#   022_macro_params.bmp  new page: macro parameters
 #
 # The service side lives in dgus_lcd/firmware/dgus_reloaded/macros.cfg;
 # the VP addresses below must match it.
@@ -19,17 +21,10 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import argparse
-import io
 import os
-import shutil
 import sys
-import tarfile
-import urllib.request
 
 from . import screen_files as sf
-
-RELEASE_URL = ("https://github.com/Desuuuu/DGUS-reloaded-Klipper/releases/"
-               "download/1.0.2/DWIN_SET.tar.gz")
 
 PAGE_MORE = 18          # settings_menu2
 PAGE_MACROS = 21        # new page id (free in 1.0.2)
@@ -76,7 +71,7 @@ ICON = (170, 170, 170)
 # Static text is drawn into the BMPs like the original pages: Segoe UI there,
 # Selawik (its open-licensed metric twin) here. Values measured on 1.0.2.
 FONT = os.path.join(os.path.dirname(os.path.dirname(
-    os.path.abspath(__file__))), "vendor", "selawik", "selawk.ttf")
+    os.path.abspath(__file__))), "screen", "fonts", "selawk.ttf")
 FONT_SIZE = 17
 TITLE_POS = (39, 4)          # text origin of "Settings" on page 9
 TITLE_COLOR = (190, 190, 190)
@@ -86,6 +81,9 @@ CAPTION_COLOR = (170, 170, 170)
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_OUT = os.path.join(REPO_DIR, "build", "dgus_macros")
 PREBUILT = os.path.join(REPO_DIR, "screen", "macros")
+# stock 1.0.2 DWIN_SET (vendored project + the compiled release files)
+RELEASE_DIR = os.path.join(REPO_DIR, "vendor", "DGUS-reloaded-Klipper",
+                           "project", "DWIN_SET")
 
 FILES = ("13_touch.bin", "14_variable.bin", "018_settings_menu2.bmp",
          "021_macros.bmp", "022_macro_params.bmp")
@@ -313,47 +311,18 @@ def build(release_dir, out_dir, preview=False):
     return [os.path.join(out_dir, n) for n in FILES]
 
 
-def fetch_release(dest):
-    """Download and unpack the 1.0.2 DWIN_SET into dest/DWIN_SET."""
-    with urllib.request.urlopen(RELEASE_URL, timeout=60) as r:
-        data = r.read()
-    with tarfile.open(fileobj=io.BytesIO(data)) as tf:
-        for m in tf.getmembers():
-            name = os.path.normpath(m.name)
-            if (not m.isfile() or name.startswith("..")
-                    or os.path.isabs(name)):
-                continue   # only plain files inside dest
-            target = os.path.join(dest, name)
-            os.makedirs(os.path.dirname(target), exist_ok=True)
-            with tf.extractfile(m) as src, open(target, "wb") as dst:
-                shutil.copyfileobj(src, dst)
-    return os.path.join(dest, "DWIN_SET")
-
-
-RELEASE_CACHE = os.path.expanduser("~/.cache/dgus_lcd/release-1.0.2")
-
-
-def release_dir():
-    """The cached 1.0.2 DWIN_SET folder, downloaded on first use."""
-    release = os.path.join(RELEASE_CACHE, "DWIN_SET")
-    if not os.path.isdir(release):
-        print("downloading %s" % RELEASE_URL)
-        fetch_release(RELEASE_CACHE)
-    return release
-
-
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Build the Macros screen files")
-    ap.add_argument("--release", help="unpacked DGUS-reloaded-Klipper 1.0.2 "
-                    "DWIN_SET folder (downloaded if omitted)")
+    ap.add_argument("--release", default=RELEASE_DIR,
+                    help="stock DGUS-reloaded-Klipper 1.0.2 DWIN_SET folder "
+                    "(default: the vendored copy)")
     ap.add_argument("--out", default=DEFAULT_OUT,
                     help="output folder (default: build/dgus_macros in the "
                     "repo; the committed copy is screen/macros)")
     ap.add_argument("--preview", action="store_true",
                     help="also write PNG previews of the pages")
     args = ap.parse_args(argv)
-    release = args.release or release_dir()
-    for path in build(release, args.out, args.preview):
+    for path in build(args.release, args.out, args.preview):
         print("wrote %s" % path)
     print("upload with: ~/dgus-env/bin/python -m dgus_lcd.dgustool upload "
           + " ".join(os.path.join(args.out, n) for n in FILES))
