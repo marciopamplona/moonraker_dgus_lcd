@@ -149,11 +149,10 @@ textarea.raw { width: 100%; background: var(--bg); border: 1px solid var(--line)
 .rule-form input { min-width: 0; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
 
 /* --- M3 picture editing --- */
-.modes { display: inline-flex; }
-.modes button { border-radius: 0; margin-left: -1px; }
-.modes button:first-child { border-radius: 6px 0 0 6px; }
-.modes button:last-child { border-radius: 0 6px 6px 0; }
-.modes button.active { background: var(--hover); border-color: var(--accent); font-weight: 600; }
+.modes { display: inline-flex; gap: 2px; padding: 2px; border-radius: 7px; background: var(--bg); }
+.modes button { border: 0; border-radius: 5px; background: transparent; }
+.modes button:hover { background: var(--hover); }
+.modes button.active, .modes button.active:hover { background: var(--accent); color: var(--accent-fg); }
 .tools { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; margin: 6px 0; }
 .tool { padding: 4px 0; font-size: 15px; }
 .tool.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }

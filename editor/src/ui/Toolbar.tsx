@@ -75,12 +75,12 @@ export function Toolbar() {
         </optgroup>
       </select>
       <span class="modes" role="group" aria-label="Mode">
-        <button class={s.mode === "edit" ? "small active" : "small"} title="Place and edit controls"
+        <button class={s.mode === "edit" ? "small active" : "small"} aria-pressed={s.mode === "edit"} title="Place and edit controls"
           onClick={() => setState({ mode: "edit", layerId: null })}>Controls</button>
-        <button class={s.mode === "picture" ? "small active" : "small"} title="Draw the page picture"
+        <button class={s.mode === "picture" ? "small active" : "small"} aria-pressed={s.mode === "picture"} title="Draw the page picture"
           onClick={() => setState({ mode: "picture", selection: null })}>Picture</button>
         <button
-          class={s.mode === "simulate" ? "small primary" : "small"} title="Click through the project in the browser"
+          class={s.mode === "simulate" ? "small active" : "small"} aria-pressed={s.mode === "simulate"} title="Click through the project in the browser"
           onClick={() => {
             if (s.mode !== "simulate") resetSim();
             setState({ mode: s.mode === "simulate" ? "edit" : "simulate", selection: null, layerId: null });
