@@ -34,6 +34,7 @@ export default defineConfig({
   build: { outDir: "dist", emptyOutDir: true, modulePreload: false },
   // Listen on the LAN too: the editor usually runs on the Pi and is opened
   // from another computer.
-  server: { host: true, port: 5173 },
+  // /api goes to the Pi bridge (python -m dgus_lcd.editor_bridge, port 8090)
+  server: { host: true, port: 5173, proxy: { "/api": "http://127.0.0.1:8090" } },
   preview: { host: true, port: 4173 },
 });

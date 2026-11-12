@@ -57,6 +57,11 @@ Work in progress; see [docs/EDITOR_PLAN.md](../docs/EDITOR_PLAN.md).
     files from disk**. The sidebar warns when files overlap in the
     screen's flash (font ids are 256 KB each; WAVs share the upper 32 MB).
 
+- **M5** (done): the Pi bridge (`dgus_lcd/editor_bridge.py`, see
+  [docs/EDITOR.md](../docs/EDITOR.md)): flash over serial with progress and
+  "only changed files", show the current page on the screen, mirror the
+  simulator to it, projects on the Pi, the DGUS-reloaded template.
+
 ### Keyboard
 
 | Key | |
@@ -113,12 +118,15 @@ npm run fixtures    # regenerate test/fixtures from dgus_lcd/screen_files.py
 ## Running tests on the Pi
 
 The Pi has 1 GB shared with Klipper, and parallel test workers have frozen
-it. `npm run test:pi` (`scripts/test-pi.sh`) runs vitest with one worker in
-a `systemd-run --user` scope capped at 280 MB, so the kernel kills the tests
-rather than the board stalling. It refuses to start with less than 300 MB
-available (stop `npm run dev` first if needed). `tsc` 7 is a Go binary;
-run it with `GOMEMLIMIT=150MiB` (as the script does) or it grows into the
-cap and thrashes.
+it. `npm run test:pi` (`scripts/test-pi.sh`) runs each test file in its own
+vitest process (one worker) inside a `systemd-run --user` scope capped at
+280 MB, so the kernel kills a test run rather than the board stalling; a
+killed file is reported as `KILL`. It refuses to start with less than
+300 MB available (stop `npm run dev` first if needed). `tsc` 7 is a Go
+binary; run it with `GOMEMLIMIT=150MiB` (see the script) or it grows into
+the cap and thrashes. The Python tests (`tests/`, including the bridge)
+run the same way:
+`systemd-run --user --scope -q -p MemoryMax=300M -p MemorySwapMax=0 ~/dgus-env/bin/python -m unittest discover -t . -s tests`.
 
 ## Where files go
 

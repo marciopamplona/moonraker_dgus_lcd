@@ -3,7 +3,8 @@ import { DGUS_RELOADED_RULES, hostRules } from "../core/sim/host";
 import type { HostRule } from "../core/project/schema";
 import { pageControls, vpHex } from "./controls";
 import { parseNumber } from "./Inspector";
-import { edit, resetSim, simChanged, useStore } from "./store";
+import { edit, resetSim, setState, simChanged, useStore } from "./store";
+import { bridgeProblem, mirror } from "./bridgeUi";
 
 function setRules(rules: HostRule[]) {
   edit((d) => void (d.project.sim = { rules }));
@@ -80,6 +81,12 @@ export function SimPanel() {
           <button class="small" onClick={() => { s.sim.closeOverlay(); simChanged(); }}>Close {s.sim.overlay.kind === "popup" ? "popup" : "keypad"}</button>
         )}
       </div>
+      {s.bridge && (
+        <label class="small" title={bridgeProblem() ?? "VP writes and page switches also go to the real screen"}>
+          <input type="checkbox" checked={s.mirror} disabled={!!bridgeProblem()}
+            onChange={(e) => setState({ mirror: e.currentTarget.checked })} /> Mirror to the screen
+        </label>
+      )}
       {s.sim.overlay && s.sim.overlay.kind !== "popup" && (
         <p class="small">Typed: <span class="mono">{s.sim.overlay.buffer || "—"}</span></p>
       )}
@@ -97,6 +104,7 @@ export function SimPanel() {
                     if (v === null) return;
                     s.sim.set(vp, v);
                     simChanged();
+                    void mirror([{ type: "write", vp, value: v, words: 1, source: "panel" }]);
                   }} />
               </td>
               <td class="muted small mono">0x{s.sim.get(vp).toString(16).padStart(4, "0")}</td>

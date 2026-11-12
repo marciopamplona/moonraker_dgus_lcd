@@ -28,6 +28,14 @@ sudo systemctl stop dgus_lcd
 sudo systemctl start dgus_lcd
 ```
 
+**DGUS Studio** ([docs/EDITOR.md](docs/EDITOR.md)) is a browser editor
+for the screen project: pages, pictures, buttons and displays, icons, fonts
+and the CFG, with a simulator. Run the bridge to flash and preview from it:
+
+```
+~/dgus-env/bin/python -m dgus_lcd.editor_bridge --host 0.0.0.0
+```
+
 A **Macros** screen (More → Macros) lists your Klipper macros and runs
 them. It needs a small screen update; see [docs/MACROS.md](docs/MACROS.md).
 

@@ -2,6 +2,7 @@ import { useRef } from "preact/hooks";
 import { closeDoc, edit, redo, resetSim, setState, undo, useStore, type SaveState } from "./store";
 import { exportDwinSet, importFolder, openFile, saveFile } from "./actions";
 import { TEMPLATES, addFromTemplate } from "./commands";
+import { bridgeProblem, saveToPi, showOnScreen } from "./bridgeUi";
 
 export function FilePickers({ onFolder, onFile }: { onFolder: (f: FileList) => void; onFile: (f: File) => void }) {
   const folder = useRef<HTMLInputElement>(null);
@@ -105,6 +106,16 @@ export function Toolbar() {
           {k}
         </label>
       ))}
+      {s.bridge && (
+        <span class="bridge" role="group" aria-label="Pi bridge">
+          <span class={`dot-status ${bridgeProblem() ? "warn" : "ok"}`} title={bridgeProblem() ?? `Screen on ${s.bridge.serial} at ${s.bridge.baud} baud`}>
+            Pi
+          </span>
+          <button class="small" title="Show the current page on the screen" disabled={!!bridgeProblem()} onClick={() => void showOnScreen()}>Show on screen</button>
+          <button class="small" onClick={() => setState({ flashOpen: true })}>Flash…</button>
+          <button class="small" title="Store the project on the Pi (~/dgus_projects)" onClick={() => void saveToPi()}>Save to Pi</button>
+        </span>
+      )}
       <FilePickers onFolder={importFolder} onFile={openFile} />
       <button onClick={saveFile} title="Download the project as a .dgusproj file">Save .dgusproj</button>
       <button class="primary" onClick={exportDwinSet} title="Download a DWIN_SET zip for the SD card">Export DWIN_SET</button>

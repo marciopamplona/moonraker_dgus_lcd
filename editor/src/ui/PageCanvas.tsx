@@ -9,6 +9,7 @@ import { iconCanvas, iconLibrary, pictureCanvas } from "./render";
 import { ArtOverlay } from "./ArtOverlay";
 import { quantize565 } from "../core/art/dither";
 import { edit, endGroup, goPage, setState, simChanged, syncSim, useStore } from "./store";
+import { mirror } from "./bridgeUi";
 
 type Handle = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 const HANDLES: Handle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
@@ -185,6 +186,7 @@ export function PageCanvas() {
 
   const tap = (e: MouseEvent) => {
     const [x, y] = toScreen(e);
+    const logStart = s.sim.log.length;
     const r = syncSim().tap(Math.floor(x), Math.floor(y));
     if (s.sim.flash) {
       const f = s.sim.flash;
@@ -204,6 +206,9 @@ export function PageCanvas() {
       }
     }
     simChanged();
+    // writes and page switches from this tap, including keypad entries and
+    // host rules that only show up in the log
+    void mirror([...r.events, ...s.sim.log.slice(logStart).filter((e) => (e.type === "write" || e.type === "jump") && !r.events.includes(e))]);
   };
 
   const box = (r: Rect) => ({ x: r[0], y: r[1], width: Math.max(1, r[2] - r[0] + 1), height: Math.max(1, r[3] - r[1] + 1) });

@@ -208,3 +208,18 @@ textarea.raw { width: 100%; background: var(--bg); border: 1px solid var(--line)
 .cfg legend { font-weight: 600; padding: 0 4px; }
 .sram-form { grid-template-columns: 8em 1fr auto auto; max-width: 640px; }
 .sram td { vertical-align: top; }
+
+/* --- M5 bridge --- */
+.bridge { display: inline-flex; gap: 4px; align-items: center; padding: 2px 4px; border-radius: 7px; background: var(--bg); }
+.dot-status { font-size: 12px; font-weight: 600; padding: 1px 6px; border-radius: 10px; }
+.dot-status.ok { background: var(--good); color: #fff; }
+.dot-status.warn { background: var(--warn); color: #fff; }
+.modal-back { position: fixed; inset: 0; background: rgb(0 0 0 / 0.45); display: flex; align-items: center; justify-content: center; z-index: 20; padding: 16px; }
+.modal { background: var(--panel); border-radius: 10px; padding: 16px 20px; width: min(640px, 100%); max-height: 90vh; overflow: auto;
+  display: flex; flex-direction: column; gap: 6px; box-shadow: 0 10px 40px rgb(0 0 0 / 0.4); }
+.modal h2 { margin: 0; font-size: 18px; }
+.modal progress { width: 100%; }
+.row.end { justify-content: flex-end; margin-top: 8px; }
+.flash tr.done td:last-child { color: var(--good); }
+.flash tr.failed td:last-child { color: var(--bad); }
+.flash tr.unchanged td, .flash tr.skipped td { color: var(--muted); }

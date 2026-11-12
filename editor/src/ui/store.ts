@@ -6,6 +6,7 @@ import { hostRules } from "../core/sim/host";
 import { Simulator } from "../core/sim/simulator";
 import * as idb from "../io/idb";
 import { loadFonts, loadImages } from "./artEnv";
+import type { BridgeInfo } from "../io/bridge";
 
 export type SaveState = "off" | "idle" | "pending" | "saving" | "saved" | "error";
 
@@ -37,6 +38,11 @@ export interface State {
   preview565: boolean;
   /** A project file open in the main area instead of a page. */
   file: string | null;
+  /** The Pi bridge, when the editor is served by one. */
+  bridge: BridgeInfo | null;
+  /** Send simulated VP writes and page switches to the real screen. */
+  mirror: boolean;
+  flashOpen: boolean;
   panel: "inspect" | "vps";
   sim: Simulator;
   /** Bumped when the simulator's state changes. */
@@ -49,6 +55,7 @@ let state: State = {
   layers: { touch: true, display: true, icons: true }, zoom: 2,
   past: [], future: [], mode: "edit", panel: "inspect", sim: new Simulator(0), simTick: 0,
   layerId: null, tool: "select", brush: { color: "#ffffff", width: 6 }, preview565: false, file: null,
+  bridge: null, mirror: false, flashOpen: false,
 };
 const subs = new Set<() => void>();
 
