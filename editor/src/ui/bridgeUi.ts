@@ -23,9 +23,15 @@ export function bridgeProblem(): string | null {
 
 const fail = (e: unknown) => alert(e instanceof Error ? e.message : String(e));
 
-/** The project as the DWIN_SET zip the bridge flashes. */
-export function projectZip(): Uint8Array {
-  return zipDwinSet(compile(getState().doc!));
+/** The project (or only the files named in `only`) as the DWIN_SET zip
+ * the bridge flashes. */
+export function projectZip(only?: string[]): Uint8Array {
+  const files = compile(getState().doc!);
+  if (only) {
+    const keep = new Set(only);
+    for (const k of [...files.keys()]) if (!keep.has(k)) files.delete(k);
+  }
+  return zipDwinSet(files);
 }
 
 export async function showOnScreen(): Promise<void> {

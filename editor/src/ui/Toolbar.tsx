@@ -112,7 +112,7 @@ export function Toolbar() {
             Pi
           </span>
           <button class="small" title="Show the current page on the screen" disabled={!!bridgeProblem()} onClick={() => void showOnScreen()}>Show on screen</button>
-          <button class="small" onClick={() => setState({ flashOpen: true })}>Flash…</button>
+          <button class="small" onClick={() => setState({ flashOpen: true, flashScope: "all" })}>Flash…</button>
           <button class="small" title="Store the project on the Pi (~/dgus_projects)" onClick={() => void saveToPi()}>Save to Pi</button>
         </span>
       )}

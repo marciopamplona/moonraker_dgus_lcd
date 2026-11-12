@@ -203,6 +203,10 @@ function PageInspector({ page, doc, placed }: { page: Page; doc: ProjectDoc; pla
           const p = edit((d) => duplicatePage(d, page.id));
           if (p) goPage(p.id);
         }}>Duplicate page</button>
+        {s.bridge && (
+          <button class="small" title="Upload this page's picture and controls to the screen"
+            onClick={() => setState({ flashOpen: true, flashScope: "page" })}>Flash this page…</button>
+        )}
         <button class="small danger" onClick={() => {
           const msg = `Delete page ${page.id} "${page.name}" with ${page.touch.length + page.display.length} controls?` +
             (refs ? `\n${refs} reference(s) to it will point nowhere.` : "");

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import * as bridge from "../io/bridge";
+import { pageFileNames, pagePictureRefs } from "../core/project/compile";
 import { bridgeProblem, projectZip, refreshBridge } from "./bridgeUi";
 import { setState, useStore } from "./store";
 
@@ -15,6 +16,12 @@ export function FlashDialog() {
   const [onlyChanged, setOnlyChanged] = useState(true);
   const [verify, setVerify] = useState(false);
   const [reset, setReset] = useState(true);
+  const [scope, setScope] = useState<"all" | "page">(s.flashScope);
+  const [withRefs, setWithRefs] = useState(true);
+  const doc = s.doc!;
+  const page = doc.project.pages.find((p) => p.id === s.pageId) ?? null;
+  const refs = page ? pagePictureRefs(doc, page.id) : [];
+  const only = scope === "page" && page ? pageFileNames(doc, page.id, withRefs) : undefined;
   const [job, setJob] = useState<bridge.FlashJob | null>(null);
   const [err, setErr] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -39,7 +46,7 @@ export function FlashDialog() {
   async function start() {
     setErr("");
     try {
-      const j = await bridge.flash(projectZip(), { onlyChanged, verify, reset });
+      const j = await bridge.flash(projectZip(only), { onlyChanged, verify, reset });
       setJob(j);
       poll(j.id);
     } catch (e) {
@@ -62,6 +69,25 @@ export function FlashDialog() {
         {problem && <p class="bad small">{problem}</p>}
         {!job && (
           <>
+            <fieldset class="scope">
+              <label class="small"><input type="radio" name="scope" checked={scope === "all"} onChange={() => setScope("all")} /> Whole project</label>
+              <label class="small">
+                <input type="radio" name="scope" checked={scope === "page"} disabled={!page} onChange={() => setScope("page")} />{" "}
+                This page{page ? ` (${page.id} ${page.name})` : ""}
+              </label>
+              {scope === "page" && page && (
+                <div class="scope-detail">
+                  {refs.length > 0 && (
+                    <label class="small"><input type="checkbox" checked={withRefs} onChange={(e) => setWithRefs(e.currentTarget.checked)} />{" "}
+                      with the pictures it shows: pages {refs.join(", ")} (pressed states, keypads, popups)</label>
+                  )}
+                  <p class="muted small">
+                    Sends {only!.join(", ")}. Every page's buttons and displays are in {doc.project.touchFile} and {doc.project.variables.file},
+                    so those go too (they're small). Icon libraries and fonts aren't included.
+                  </p>
+                </div>
+              )}
+            </fieldset>
             <label class="small"><input type="checkbox" checked={onlyChanged} onChange={(e) => setOnlyChanged(e.currentTarget.checked)} /> only files changed since the last flash</label>
             <label class="small"><input type="checkbox" checked={verify} onChange={(e) => setVerify(e.currentTarget.checked)} /> verify fonts and icons after writing (slower)</label>
             <label class="small"><input type="checkbox" checked={reset} onChange={(e) => setReset(e.currentTarget.checked)} /> restart the screen when done</label>

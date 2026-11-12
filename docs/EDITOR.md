@@ -59,6 +59,12 @@ service has it (hover for details).
   has already sent; "Forget what was flashed" sends everything next time.
   A full DGUS-reloaded set takes several minutes (about 30 s per picture);
   changing a few pages takes seconds.
+  **This page** (in the dialog, or **Flash this page…** on the page
+  panel) sends just the page's picture plus `13_touch.bin` and
+  `14_variable.bin`, which hold every page's buttons and displays and are
+  small. By default it also sends the pictures the page shows: pressed
+  states (`Pic_On`), keypads and popup menus. Icon libraries and fonts
+  aren't included.
   **T5UID1.CFG and sounds can't go over serial.** Use **Export DWIN_SET**
   and an SD card for those (see FLASHING.txt in the zip).
 - **Show on screen** switches the real screen to the page you're editing

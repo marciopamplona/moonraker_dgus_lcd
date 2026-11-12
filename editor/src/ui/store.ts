@@ -43,6 +43,8 @@ export interface State {
   /** Send simulated VP writes and page switches to the real screen. */
   mirror: boolean;
   flashOpen: boolean;
+  /** Scope the flash dialog opens with. */
+  flashScope: "all" | "page";
   panel: "inspect" | "vps";
   sim: Simulator;
   /** Bumped when the simulator's state changes. */
@@ -55,7 +57,7 @@ let state: State = {
   layers: { touch: true, display: true, icons: true }, zoom: 2,
   past: [], future: [], mode: "edit", panel: "inspect", sim: new Simulator(0), simTick: 0,
   layerId: null, tool: "select", brush: { color: "#ffffff", width: 6 }, preview565: false, file: null,
-  bridge: null, mirror: false, flashOpen: false,
+  bridge: null, mirror: false, flashOpen: false, flashScope: "all",
 };
 const subs = new Set<() => void>();
 

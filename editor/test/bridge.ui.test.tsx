@@ -5,7 +5,7 @@ import "fake-indexeddb/auto";
 import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { blankProject, decompile, getPage, returnKey, addControl } from "../src/core";
+import { blankProject, decompile, getPage, returnKey, addControl, addPage, readHead, writeHead } from "../src/core";
 import { unzipSync } from "fflate";
 import { loadDgusproj, saveDgusproj } from "../src/io/dgusproj";
 import { pickDwinSet } from "../src/io/dwinset";
@@ -158,5 +158,44 @@ describe("Pi bridge in the editor", () => {
     expect(([...root.querySelectorAll(".modal button")].find((b) => b.textContent === "Flash") as HTMLButtonElement).disabled).toBe(true);
     void getPage;
     void saveDgusproj;
+  });
+
+  it("flash only this page (with or without the pictures it shows)", async () => {
+    const doc = blankProject("One page");
+    addPage(doc, { id: 1, name: "sel" });
+    addPage(doc, { id: 2, name: "other" });
+    const k = returnKey(0, [0, 0, 9, 9], 0x1000, 1);
+    addControl(doc, 0, "touch", writeHead(k, { ...readHead(k), picOn: 1 }));
+    await act(() => openDoc(doc, [], false));
+    await act(() => setState({ pageId: 0 }));
+    await wait(20);
+    await click(btn("Flash this page…"));
+    const radios = root.querySelectorAll<HTMLInputElement>('.modal input[type="radio"]');
+    expect(radios[1]!.checked).toBe(true); // opened with "This page"
+    expect(root.querySelector(".modal")!.textContent).toContain("pages 1 (pressed states");
+    const flashBtn = () => [...root.querySelectorAll(".modal button")].find((b) => b.textContent === "Flash")!;
+    await click(flashBtn());
+    await wait(20);
+    const zipped = (c: { body: unknown }) => Object.keys(unzipSync(c.body as Uint8Array)).filter((n) => n.startsWith("DWIN_SET/")).sort();
+    expect(zipped(calls.filter((c) => c.path.startsWith("flash?")).at(-1)!)).toEqual(
+      ["DWIN_SET/000_main.bmp", "DWIN_SET/001_sel.bmp", "DWIN_SET/13_touch.bin", "DWIN_SET/14_variable.bin"]);
+    for (let i = 0; i < 40 && !root.textContent?.includes("done after"); i++) await wait(100);
+    await click(btn("Close"));
+
+    // again without the referenced pictures
+    await click(btn("Flash this page…"));
+    const refs = [...root.querySelectorAll(".modal label")].find((l) => l.textContent?.includes("pictures it shows"))!.querySelector("input")!;
+    await act(() => { refs.checked = false; refs.dispatchEvent(new Event("change", { bubbles: true })); });
+    polls = 0;
+    await click(flashBtn());
+    await wait(20);
+    expect(zipped(calls.filter((c) => c.path.startsWith("flash?")).at(-1)!)).toEqual(
+      ["DWIN_SET/000_main.bmp", "DWIN_SET/13_touch.bin", "DWIN_SET/14_variable.bin"]);
+    for (let i = 0; i < 40 && !root.textContent?.includes("done after"); i++) await wait(100);
+    await click(btn("Close"));
+
+    // the toolbar's Flash… still means the whole project
+    await click(btn("Flash…"));
+    expect(root.querySelectorAll<HTMLInputElement>('.modal input[type="radio"]')[0]!.checked).toBe(true);
   });
 });

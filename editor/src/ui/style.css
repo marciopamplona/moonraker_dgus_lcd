@@ -223,3 +223,5 @@ textarea.raw { width: 100%; background: var(--bg); border: 1px solid var(--line)
 .flash tr.done td:last-child { color: var(--good); }
 .flash tr.failed td:last-child { color: var(--bad); }
 .flash tr.unchanged td, .flash tr.skipped td { color: var(--muted); }
+.scope { border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.scope-detail { padding-left: 20px; }
